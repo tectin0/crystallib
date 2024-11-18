@@ -1,5 +1,5 @@
 [package]
-name = "cyrstallib"
+name = "crystallib"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,4 +11,4 @@ serde = ["dep:serde"]
 
 [dev-dependencies]
 serde_json = "1.0.132"
-cyrstallib = { path = ".", features = ["serde"] }
+crystallib = { path = ".", features = ["serde"] }

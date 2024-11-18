@@ -17,7 +17,7 @@ fn test() {
 "U13": 0.0,
 "U23": 0.0}"#;
 
-    let atom: cyrstallib::Atom = serde_json::from_str(ATOM).unwrap();
+    let atom: crystallib::Atom = serde_json::from_str(ATOM).unwrap();
 
     const CELL: &str = r#"{
 "a": 4.0094,
@@ -30,11 +30,11 @@ fn test() {
 "space_group": "P m -3 m"
 }"#;
 
-    let cell: cyrstallib::Cell = serde_json::from_str(CELL).unwrap();
+    let cell: crystallib::Cell = serde_json::from_str(CELL).unwrap();
 
-    let phase = cyrstallib::Phase {
+    let phase = crystallib::Phase {
         cell,
-        atoms: cyrstallib::Atoms(vec![atom]),
+        atoms: crystallib::Atoms(vec![atom]),
     };
 
     assert_eq!(phase.atoms[0].label, "Ti1");

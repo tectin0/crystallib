@@ -3,10 +3,10 @@
 version = 4
 
 [[package]]
-name = "cyrstallib"
+name = "crystallib"
 version = "0.1.0"
 dependencies = [
- "cyrstallib",
+ "crystallib",
  "serde",
  "serde_json",
 ]
