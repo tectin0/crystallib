@@ -47,8 +47,25 @@ impl std::fmt::Display for AdpType {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseAdpTypeError(String);
+
+impl ParseAdpTypeError {
+    pub fn new(s: impl AsRef<str>) -> Self {
+        Self(format!("Invalid ADP type: {}", s.as_ref()))
+    }
+}
+
+impl std::fmt::Display for ParseAdpTypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ParseAdpTypeError {}
+
 impl FromStr for AdpType {
-    type Err = &'static str;
+    type Err = ParseAdpTypeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -59,8 +76,24 @@ impl FromStr for AdpType {
             "Bani" => Ok(AdpType::Bani),
             "Biso" => Ok(AdpType::Biso),
             "Bovl" => Ok(AdpType::Bovl),
-            _ => Err("Invalid AdpType"),
+            _ => Err(ParseAdpTypeError::new(s)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test_parse_adp_type {
+    #[test]
+    fn test() {
+        assert_eq!("Uiso".parse(), Ok(super::AdpType::Uiso));
+        assert_eq!("Uani".parse(), Ok(super::AdpType::Uani));
+        assert_eq!("Uovl".parse(), Ok(super::AdpType::Uovl));
+        assert_eq!("Umpe".parse(), Ok(super::AdpType::Umpe));
+        assert_eq!("Bani".parse(), Ok(super::AdpType::Bani));
+        assert_eq!("Biso".parse(), Ok(super::AdpType::Biso));
+        assert_eq!("Bovl".parse(), Ok(super::AdpType::Bovl));
+        assert!("".parse::<super::AdpType>().is_err());
+        assert!("Uiso1".parse::<super::AdpType>().is_err());
     }
 }
 
