@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -45,17 +47,19 @@ impl std::fmt::Display for AdpType {
     }
 }
 
-impl From<&str> for AdpType {
-    fn from(s: &str) -> Self {
+impl FromStr for AdpType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Uiso" => AdpType::Uiso,
-            "Uani" => AdpType::Uani,
-            "Uovl" => AdpType::Uovl,
-            "Umpe" => AdpType::Umpe,
-            "Bani" => AdpType::Bani,
-            "Biso" => AdpType::Biso,
-            "Bovl" => AdpType::Bovl,
-            _ => AdpType::Uiso,
+            "Uiso" => Ok(AdpType::Uiso),
+            "Uani" => Ok(AdpType::Uani),
+            "Uovl" => Ok(AdpType::Uovl),
+            "Umpe" => Ok(AdpType::Umpe),
+            "Bani" => Ok(AdpType::Bani),
+            "Biso" => Ok(AdpType::Biso),
+            "Bovl" => Ok(AdpType::Bovl),
+            _ => Err("Invalid AdpType"),
         }
     }
 }
