@@ -18,6 +18,49 @@ impl std::ops::DerefMut for Atoms {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, Default, Clone, PartialEq)]
+pub enum AdpType {
+    #[default]
+    Uiso,
+    Uani,
+    Uovl,
+    Umpe,
+    Bani,
+    Biso,
+    Bovl,
+}
+
+impl std::fmt::Display for AdpType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdpType::Uiso => write!(f, "Uiso"),
+            AdpType::Uani => write!(f, "Uani"),
+            AdpType::Uovl => write!(f, "Uovl"),
+            AdpType::Umpe => write!(f, "Umpe"),
+            AdpType::Bani => write!(f, "Bani"),
+            AdpType::Biso => write!(f, "Biso"),
+            AdpType::Bovl => write!(f, "Bovl"),
+        }
+    }
+}
+
+impl From<&str> for AdpType {
+    fn from(s: &str) -> Self {
+        match s {
+            "Uiso" => AdpType::Uiso,
+            "Uani" => AdpType::Uani,
+            "Uovl" => AdpType::Uovl,
+            "Umpe" => AdpType::Umpe,
+            "Bani" => AdpType::Bani,
+            "Biso" => AdpType::Biso,
+            "Bovl" => AdpType::Bovl,
+            _ => AdpType::Uiso,
+        }
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Atom {
@@ -29,7 +72,7 @@ pub struct Atom {
     pub z: f64,
     pub occupancy: f64,
     pub multiplicity: f64,
-    pub adp_type: String,
+    pub adp_type: AdpType,
     pub u_iso_or_equiv: f64,
     #[cfg_attr(feature = "serde", serde(rename = "U11"))]
     pub u11: f64,

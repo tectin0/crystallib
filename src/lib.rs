@@ -7,3 +7,5 @@ pub use atoms::Atoms;
 
 pub use cell::Cell;
 pub use phase::Phase;
+
+pub use atoms::AdpType;

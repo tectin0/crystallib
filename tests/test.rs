@@ -44,7 +44,7 @@ fn test() {
     assert_eq!(phase.atoms[0].z, 0.5);
     assert_eq!(phase.atoms[0].occupancy, 1.0);
     assert_eq!(phase.atoms[0].multiplicity, 1.0);
-    assert_eq!(phase.atoms[0].adp_type, "Uiso");
+    assert_eq!(phase.atoms[0].adp_type, crystallib::AdpType::Uiso);
     assert_eq!(phase.atoms[0].u_iso_or_equiv, 0.0087);
     assert_eq!(phase.atoms[0].u11, 0.0);
     assert_eq!(phase.atoms[0].u22, 0.0);
