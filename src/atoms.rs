@@ -69,6 +69,8 @@ impl FromStr for AdpType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "I" => Ok(AdpType::Uiso),
+            "A" => Ok(AdpType::Uani),
             "Uiso" => Ok(AdpType::Uiso),
             "Uani" => Ok(AdpType::Uani),
             "Uovl" => Ok(AdpType::Uovl),
