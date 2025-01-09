@@ -10,4 +10,5 @@ pub struct Cell {
     pub gamma: f64,
     pub volume: f64,
     pub space_group: String,
+    pub space_group_number: u8,
 }
