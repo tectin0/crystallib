@@ -5,22 +5,22 @@ use cgmath::Transform;
 const SPACEGROUP_SYMMETRY_OPERATIONS_RAW: &str =
     include_str!("../assets/spacegroup_symmetry_operations.json");
 
-pub static SPACEGROUP_SYMMETRY_OPERATIONS: LazyLock<BTreeMap<usize, Vec<cgmath::Matrix4<f64>>>> =
+pub static SPACEGROUP_SYMMETRY_OPERATIONS: LazyLock<BTreeMap<u8, Vec<cgmath::Matrix4<f64>>>> =
     LazyLock::new(|| serde_json::from_str(SPACEGROUP_SYMMETRY_OPERATIONS_RAW).unwrap());
 
 const SPACEGROUP_SYMBOLS_RAW: &str = include_str!("../assets/spacegroup_symbols.json");
 
-pub static SPACEGROUP_SYMBOLS: LazyLock<BTreeMap<usize, String>> = LazyLock::new(|| {
+pub static SPACEGROUP_SYMBOLS: LazyLock<BTreeMap<u8, String>> = LazyLock::new(|| {
     let symbols: Vec<String> = serde_json::from_str(SPACEGROUP_SYMBOLS_RAW).unwrap();
 
     symbols
         .into_iter()
         .enumerate()
-        .map(|(i, s)| (i + 1, s))
+        .map(|(i, s)| ((i + 1) as u8, s))
         .collect()
 });
 
-pub static SPACEGROUP_NUMBERS: LazyLock<BTreeMap<String, usize>> = LazyLock::new(|| {
+pub static SPACEGROUP_NUMBERS: LazyLock<BTreeMap<String, u8>> = LazyLock::new(|| {
     SPACEGROUP_SYMBOLS
         .iter()
         .map(|(i, s)| (s.clone(), *i))
@@ -38,7 +38,7 @@ impl SpaceGroupSymmetryOperations {
         SPACEGROUP_SYMMETRY_OPERATIONS.get(&space_group_number)
     }
 
-    pub fn get_all<'a>() -> &'a BTreeMap<usize, Vec<cgmath::Matrix4<f64>>> {
+    pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
         &SPACEGROUP_SYMMETRY_OPERATIONS
     }
 
@@ -50,7 +50,7 @@ impl SpaceGroupSymmetryOperations {
             .map(|s| s.as_str())
     }
 
-    pub fn get_number<'a>(space_group_symbol: impl IntoSpaceGroupSymbol) -> Option<usize> {
+    pub fn get_number<'a>(space_group_symbol: impl IntoSpaceGroupSymbol) -> Option<u8> {
         let space_group_symbol = space_group_symbol.into_space_group_symbol()?;
 
         SPACEGROUP_NUMBERS.get(space_group_symbol).copied()
@@ -93,11 +93,7 @@ impl SpaceGroupSymmetryOperations {
                 .map(|m| {
                     let new_points: Vec<cgmath::Point3<f64>> = points
                         .iter()
-                        .map(|point| {
-                            
-
-                            m.transform_point(*point)
-                        })
+                        .map(|point| m.transform_point(*point))
                         .collect();
 
                     (
@@ -116,15 +112,15 @@ impl SpaceGroupSymmetryOperations {
 }
 
 pub trait IntoSpaceGroupNumber {
-    fn into_space_group_number(&self) -> Option<usize>;
+    fn into_space_group_number(&self) -> Option<u8>;
 }
 
 macro_rules! impl_into_space_group_number {
     ($($t:ty),*) => {
         $(
             impl IntoSpaceGroupNumber for $t {
-                fn into_space_group_number(&self) -> Option<usize> {
-                    let id = *self as usize;
+                fn into_space_group_number(&self) -> Option<u8> {
+                    let id = *self as u8;
 
                     if SPACEGROUP_SYMBOLS.contains_key(&id) {
                         Some(id)
@@ -143,7 +139,7 @@ macro_rules! impl_into_space_group_number {
 impl_into_space_group_number!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
 
 impl IntoSpaceGroupNumber for String {
-    fn into_space_group_number(&self) -> Option<usize> {
+    fn into_space_group_number(&self) -> Option<u8> {
         let split = self.split_whitespace();
         let number_of_splits = split.clone().count();
 
@@ -159,7 +155,7 @@ impl IntoSpaceGroupNumber for String {
 }
 
 impl IntoSpaceGroupNumber for &str {
-    fn into_space_group_number(&self) -> Option<usize> {
+    fn into_space_group_number(&self) -> Option<u8> {
         self.to_string().into_space_group_number()
     }
 }
@@ -173,7 +169,7 @@ macro_rules! impl_into_space_group_symbol {
         $(
             impl IntoSpaceGroupSymbol for $t {
                 fn into_space_group_symbol(&self) -> Option<&str> {
-                    let id = *self as usize;
+                    let id = *self as u8;
 
                     SPACEGROUP_SYMBOLS.get(&id).map(|s| s.as_str())
                 }
@@ -191,10 +187,7 @@ impl_into_space_group_symbol!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i3
 mod test_spacegroup_symmetry_operations {
     use std::collections::BTreeMap;
 
-    use cgmath::Matrix;
-    use gnuplot::AxesCommon;
-
-    use crate::{symmetry::integer_decode, SpaceGroupSymmetryOperations};
+    use crate::symmetry::integer_decode;
 
     use super::SPACEGROUP_SYMMETRY_OPERATIONS;
 
