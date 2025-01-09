@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
-    sync::LazyLock,
-};
+use std::{collections::BTreeMap, sync::LazyLock};
 
 use cgmath::Transform;
 
@@ -147,13 +144,23 @@ impl_into_space_group_number!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i3
 
 impl IntoSpaceGroupNumber for String {
     fn into_space_group_number(&self) -> Option<usize> {
-        SPACEGROUP_NUMBERS.get(self).copied()
+        let split = self.split_whitespace();
+        let number_of_splits = split.clone().count();
+
+        let space_group = match number_of_splits {
+            0 => None,
+            _ => Some(split.collect::<Vec<_>>().join("")),
+        };
+
+        let space_group = space_group.as_ref().unwrap_or(self);
+
+        SPACEGROUP_NUMBERS.get(space_group).copied()
     }
 }
 
 impl IntoSpaceGroupNumber for &str {
     fn into_space_group_number(&self) -> Option<usize> {
-        SPACEGROUP_NUMBERS.get(*self).copied()
+        self.to_string().into_space_group_number()
     }
 }
 
