@@ -110,7 +110,7 @@ pub struct Atom {
     pub y: f64,
     pub z: f64,
     pub occupancy: f64,
-    pub multiplicity: f64,
+    pub multiplicity: Option<f64>,
     pub adp_type: AdpType,
     pub u_iso_or_equiv: f64,
     #[cfg_attr(feature = "serde", serde(rename = "U11"))]
