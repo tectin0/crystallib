@@ -39,7 +39,7 @@ impl SpaceGroupSymmetryOperations {
     }
 
     pub fn get_all<'a>() -> &'a BTreeMap<usize, Vec<cgmath::Matrix4<f64>>> {
-        &*SPACEGROUP_SYMMETRY_OPERATIONS
+        &SPACEGROUP_SYMMETRY_OPERATIONS
     }
 
     pub fn get_symbol<'a>(space_group_number: impl IntoSpaceGroupNumber) -> Option<&'a str> {
@@ -78,7 +78,7 @@ impl SpaceGroupSymmetryOperations {
             })
             .collect();
 
-        Some(new_points.into_iter().map(|(_, p)| p).collect())
+        Some(new_points.into_values().collect())
     }
 
     pub fn generate_symmetry_equivalent_points_from_points(
@@ -94,9 +94,9 @@ impl SpaceGroupSymmetryOperations {
                     let new_points: Vec<cgmath::Point3<f64>> = points
                         .iter()
                         .map(|point| {
-                            let new_point = m.transform_point(*point);
+                            
 
-                            new_point
+                            m.transform_point(*point)
                         })
                         .collect();
 
@@ -111,7 +111,7 @@ impl SpaceGroupSymmetryOperations {
                 })
                 .collect();
 
-        Some(new_points.into_iter().map(|(_, p)| p).collect())
+        Some(new_points.into_values().collect())
     }
 }
 
