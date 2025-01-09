@@ -6,7 +6,10 @@ mod phase;
 mod symmetry;
 
 #[cfg(feature = "symmetry")]
-pub use symmetry::SpaceGroupSymmetryOperations;
+pub use symmetry::{
+    IntoSpaceGroupNumber, IntoSpaceGroupSymbol, SpaceGroupSymmetryOperations, SPACEGROUP_NUMBERS,
+    SPACEGROUP_SYMBOLS,
+};
 
 pub use atoms::Atom;
 pub use atoms::Atoms;
