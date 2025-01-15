@@ -27,21 +27,14 @@ pub static SPACEGROUP_NUMBERS: LazyLock<BTreeMap<String, u8>> = LazyLock::new(||
         .collect()
 });
 
-pub struct SpaceGroupSymmetryOperations {}
+const SPACEGROUP_GENERATORS_RAW: &str = include_str!("../assets/spacegroup_generators.json");
 
-impl SpaceGroupSymmetryOperations {
-    pub fn get<'a>(
-        space_group_number: impl IntoSpaceGroupNumber,
-    ) -> Option<&'a Vec<cgmath::Matrix4<f64>>> {
-        let space_group_number = space_group_number.into_space_group_number()?;
+pub static SPACEGROUP_GENERATORS: LazyLock<BTreeMap<u8, Vec<cgmath::Matrix4<f64>>>> =
+    LazyLock::new(|| serde_json::from_str(SPACEGROUP_GENERATORS_RAW).unwrap());
 
-        SPACEGROUP_SYMMETRY_OPERATIONS.get(&space_group_number)
-    }
+pub struct SpaceGroup {}
 
-    pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
-        &SPACEGROUP_SYMMETRY_OPERATIONS
-    }
-
+impl SpaceGroup {
     pub fn get_symbol<'a>(space_group_number: impl IntoSpaceGroupNumber) -> Option<&'a str> {
         let space_group_number = space_group_number.into_space_group_number()?;
 
@@ -55,14 +48,30 @@ impl SpaceGroupSymmetryOperations {
 
         SPACEGROUP_NUMBERS.get(space_group_symbol).copied()
     }
+}
+
+pub struct SpaceGroupGenerators {}
+
+impl SpaceGroupGenerators {
+    pub fn get<'a>(
+        space_group_number: impl IntoSpaceGroupNumber,
+    ) -> Option<&'a Vec<cgmath::Matrix4<f64>>> {
+        let space_group_number = space_group_number.into_space_group_number()?;
+
+        SPACEGROUP_GENERATORS.get(&space_group_number)
+    }
+
+    pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
+        &SPACEGROUP_GENERATORS
+    }
 
     pub fn generate_symmetry_equivalent_points_from_point(
         space_group_number: impl IntoSpaceGroupNumber,
         point: cgmath::Point3<f64>,
     ) -> Option<Vec<cgmath::Point3<f64>>> {
-        let symmetry_operations = Self::get(space_group_number)?;
+        let generators = Self::get(space_group_number)?;
 
-        let new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = symmetry_operations
+        let mut new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = generators
             .iter()
             .map(|m| {
                 let new_point = m.transform_point(point);
@@ -78,34 +87,110 @@ impl SpaceGroupSymmetryOperations {
             })
             .collect();
 
+        new_points
+            .entry(X_TRANSLATION_DECODED)
+            .or_insert(X_TRANSLATION);
+
+        new_points
+            .entry(Y_TRANSLATION_DECODED)
+            .or_insert(Y_TRANSLATION);
+
+        new_points
+            .entry(Z_TRANSLATION_DECODED)
+            .or_insert(Z_TRANSLATION);
+
         Some(new_points.into_values().collect())
     }
 
     pub fn generate_symmetry_equivalent_points_from_points(
-        space_group_number: impl IntoSpaceGroupNumber,
+        space_group_number: impl IntoSpaceGroupNumber + Clone,
         points: &[cgmath::Point3<f64>],
-    ) -> Option<Vec<Vec<cgmath::Point3<f64>>>> {
+    ) -> Option<Vec<cgmath::Point3<f64>>> {
+        let space_group_number = space_group_number.into_space_group_number()?;
+
+        let mut new_points = BTreeMap::new();
+
+        for point in points {
+            let new_points_ =
+                Self::generate_symmetry_equivalent_points_from_point(space_group_number, *point)?;
+
+            new_points.extend(
+                new_points_
+                    .into_iter()
+                    .map(|point| (point3_decode(point), point)),
+            );
+        }
+
+        Some(new_points.into_values().collect())
+    }
+}
+
+pub struct SpaceGroupSymmetryOperations {}
+
+impl SpaceGroupSymmetryOperations {
+    pub fn get<'a>(
+        space_group_number: impl IntoSpaceGroupNumber,
+    ) -> Option<&'a Vec<cgmath::Matrix4<f64>>> {
+        let space_group_number = space_group_number.into_space_group_number()?;
+
+        SPACEGROUP_SYMMETRY_OPERATIONS.get(&space_group_number)
+    }
+
+    pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
+        &SPACEGROUP_SYMMETRY_OPERATIONS
+    }
+
+    pub fn generate_symmetry_equivalent_points_from_point(
+        space_group_number: impl IntoSpaceGroupNumber,
+        point: cgmath::Point3<f64>,
+    ) -> Option<Vec<cgmath::Point3<f64>>> {
         let symmetry_operations = Self::get(space_group_number)?;
 
-        let new_points: BTreeMap<[(u64, i16, i8); 3], Vec<cgmath::Point3<f64>>> =
+        let mut new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> =
             symmetry_operations
                 .iter()
                 .map(|m| {
-                    let new_points: Vec<cgmath::Point3<f64>> = points
-                        .iter()
-                        .map(|point| m.transform_point(*point))
-                        .collect();
+                    let new_point = m.transform_point(point);
 
-                    (
-                        [
-                            integer_decode(new_points[0].x),
-                            integer_decode(new_points[0].y),
-                            integer_decode(new_points[0].z),
-                        ],
-                        new_points,
-                    )
+                    let decoded = point3_decode(new_point);
+
+                    (decoded, new_point)
                 })
                 .collect();
+
+        new_points
+            .entry(X_TRANSLATION_DECODED)
+            .or_insert(X_TRANSLATION);
+
+        new_points
+            .entry(Y_TRANSLATION_DECODED)
+            .or_insert(Y_TRANSLATION);
+
+        new_points
+            .entry(Z_TRANSLATION_DECODED)
+            .or_insert(Z_TRANSLATION);
+
+        Some(new_points.into_values().collect())
+    }
+
+    pub fn generate_symmetry_equivalent_points_from_points(
+        space_group_number: impl IntoSpaceGroupNumber + Clone,
+        points: &[cgmath::Point3<f64>],
+    ) -> Option<Vec<cgmath::Point3<f64>>> {
+        let space_group_number = space_group_number.into_space_group_number()?;
+
+        let mut new_points = BTreeMap::new();
+
+        for point in points {
+            let new_points_ =
+                Self::generate_symmetry_equivalent_points_from_point(space_group_number, *point)?;
+
+            new_points.extend(
+                new_points_
+                    .into_iter()
+                    .map(|point| (point3_decode(point), point)),
+            );
+        }
 
         Some(new_points.into_values().collect())
     }
@@ -296,7 +381,38 @@ mod test_spacegroup_symmetry_operations {
     }
 }
 
-fn integer_decode(val: f64) -> (u64, i16, i8) {
+mod test_spacegroup_generators {
+
+    #[test]
+    #[ignore = "This test is for visualization purposes only"]
+    fn plot_symmetry_equivalent_points() {
+        let point = cgmath::Point3::new(0.0, 0.0, 0.0);
+
+        let new_points =
+            super::SpaceGroupGenerators::generate_symmetry_equivalent_points_from_point(227, point)
+                .unwrap();
+
+        dbg!(&new_points);
+
+        assert_eq!(new_points.len(), 6);
+
+        let x = new_points.iter().map(|p| p.x).collect::<Vec<_>>();
+
+        let y = new_points.iter().map(|p| p.y).collect::<Vec<_>>();
+
+        let z = new_points.iter().map(|p| p.z).collect::<Vec<_>>();
+
+        let mut figure = gnuplot::Figure::new();
+
+        let axes = figure.axes3d();
+
+        axes.points(x, y, z, &[]);
+
+        figure.show().unwrap();
+    }
+}
+
+const fn integer_decode(val: f64) -> (u64, i16, i8) {
     let bits: u64 = unsafe { std::mem::transmute(val) };
     let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
     let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
@@ -309,3 +425,19 @@ fn integer_decode(val: f64) -> (u64, i16, i8) {
     exponent -= 1023 + 52;
     (mantissa, exponent, sign)
 }
+
+const fn point3_decode(point: cgmath::Point3<f64>) -> [(u64, i16, i8); 3] {
+    [
+        integer_decode(point.x),
+        integer_decode(point.y),
+        integer_decode(point.z),
+    ]
+}
+
+const X_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(1.0, 0.0, 0.0);
+const Y_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(0.0, 1.0, 0.0);
+const Z_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(0.0, 0.0, 1.0);
+
+const X_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(X_TRANSLATION);
+const Y_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(Y_TRANSLATION);
+const Z_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(Z_TRANSLATION);
