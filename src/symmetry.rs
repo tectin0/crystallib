@@ -71,33 +71,26 @@ impl SpaceGroupGenerators {
     ) -> Option<Vec<cgmath::Point3<f64>>> {
         let generators = Self::get(space_group_number)?;
 
-        let mut new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = generators
+        let new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = generators
             .iter()
             .map(|m| {
                 let new_point = m.transform_point(point);
+                let new_point = move_point_into_unit_cell(new_point);
 
-                (
-                    [
-                        integer_decode(new_point.x),
-                        integer_decode(new_point.y),
-                        integer_decode(new_point.z),
-                    ],
-                    new_point,
-                )
+                TRIVIAL_TRANSLATIONS
+                    .iter()
+                    .map(move |t| {
+                        let new_point = t.transform_point(new_point);
+                        let new_point = move_point_into_unit_cell(new_point);
+
+                        let decoded = point3_decode(new_point);
+
+                        (decoded, new_point)
+                    })
+                    .collect::<Vec<_>>()
             })
+            .flatten()
             .collect();
-
-        new_points
-            .entry(X_TRANSLATION_DECODED)
-            .or_insert(X_TRANSLATION);
-
-        new_points
-            .entry(Y_TRANSLATION_DECODED)
-            .or_insert(Y_TRANSLATION);
-
-        new_points
-            .entry(Z_TRANSLATION_DECODED)
-            .or_insert(Z_TRANSLATION);
 
         Some(new_points.into_values().collect())
     }
@@ -146,29 +139,26 @@ impl SpaceGroupSymmetryOperations {
     ) -> Option<Vec<cgmath::Point3<f64>>> {
         let symmetry_operations = Self::get(space_group_number)?;
 
-        let mut new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> =
-            symmetry_operations
-                .iter()
-                .map(|m| {
-                    let new_point = m.transform_point(point);
+        let new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = symmetry_operations
+            .iter()
+            .map(|m| {
+                let new_point = m.transform_point(point);
+                let new_point = move_point_into_unit_cell(new_point);
 
-                    let decoded = point3_decode(new_point);
+                TRIVIAL_TRANSLATIONS
+                    .iter()
+                    .map(move |t| {
+                        let new_point = t.transform_point(new_point);
+                        let new_point = move_point_into_unit_cell(new_point);
 
-                    (decoded, new_point)
-                })
-                .collect();
+                        let decoded = point3_decode(new_point);
 
-        new_points
-            .entry(X_TRANSLATION_DECODED)
-            .or_insert(X_TRANSLATION);
-
-        new_points
-            .entry(Y_TRANSLATION_DECODED)
-            .or_insert(Y_TRANSLATION);
-
-        new_points
-            .entry(Z_TRANSLATION_DECODED)
-            .or_insert(Z_TRANSLATION);
+                        (decoded, new_point)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .flatten()
+            .collect();
 
         Some(new_points.into_values().collect())
     }
@@ -434,10 +424,68 @@ const fn point3_decode(point: cgmath::Point3<f64>) -> [(u64, i16, i8); 3] {
     ]
 }
 
-const X_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(1.0, 0.0, 0.0);
-const Y_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(0.0, 1.0, 0.0);
-const Z_TRANSLATION: cgmath::Point3<f64> = cgmath::Point3::new(0.0, 0.0, 1.0);
+fn move_point_into_unit_cell(point: cgmath::Point3<f64>) -> cgmath::Point3<f64> {
+    let x = match (point.x - 1.0).abs() < f64::EPSILON {
+        true => 1.0,
+        false => point.x.rem_euclid(1.0),
+    };
 
-const X_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(X_TRANSLATION);
-const Y_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(Y_TRANSLATION);
-const Z_TRANSLATION_DECODED: [(u64, i16, i8); 3] = point3_decode(Z_TRANSLATION);
+    let y = match (point.y - 1.0).abs() < f64::EPSILON {
+        true => 1.0,
+        false => point.y.rem_euclid(1.0),
+    };
+
+    let z = match (point.z - 1.0).abs() < f64::EPSILON {
+        true => 1.0,
+        false => point.z.rem_euclid(1.0),
+    };
+
+    cgmath::Point3::new(x, y, z)
+}
+
+#[cfg(test)]
+mod test_move_point_into_unit_cell {
+    #[test]
+    fn test_move_point_into_unit_cell() {
+        let point = cgmath::Point3::new(0.0, 0.0, 0.0);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.0, 0.0, 0.0));
+
+        let point = cgmath::Point3::new(1.5, 1.5, 1.5);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.5, 0.5, 0.5));
+
+        let point = cgmath::Point3::new(-1.5, -1.5, -1.5);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.5, 0.5, 0.5));
+
+        let point = cgmath::Point3::new(2.5, 2.5, 2.5);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.5, 0.5, 0.5));
+
+        let point = cgmath::Point3::new(1.0, 1.0, 1.0);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(1.0, 1.0, 1.0));
+
+        let point = cgmath::Point3::new(-0.75, -0.75, -0.75);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.25, 0.25, 0.25));
+
+        let point = cgmath::Point3::new(-1.75, -0.75, -0.75);
+        let point = super::move_point_into_unit_cell(point);
+        assert_eq!(point, cgmath::Point3::new(0.25, 0.25, 0.25));
+    }
+}
+
+const TRIVIAL_TRANSLATIONS: LazyLock<[cgmath::Matrix4<f64>; 8]> = LazyLock::new(|| {
+    [
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 0.0, 0.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(1.0, 0.0, 0.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 1.0, 0.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 0.0, 1.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(1.0, 1.0, 0.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 1.0, 1.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(1.0, 0.0, 1.0)),
+        cgmath::Matrix4::from_translation(cgmath::Vector3::new(1.0, 1.0, 1.0)),
+    ]
+});
