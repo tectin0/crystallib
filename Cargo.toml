@@ -5,15 +5,18 @@ edition = "2021"
 
 [dependencies]
 cgmath = { version = "0.18.0", optional = true, features = ["serde"] }
+log = "0.4.27"
 serde = { version = "1.0.215", features = ["derive"], optional = true }
 serde_json = { version = "1.0.132", optional = true }
+toml = { version = "0.8.22", optional = true }
 
 
 [features]
+data = ["dep:toml"]
 serde = ["dep:serde"]
 symmetry = ["dep:serde", "dep:serde_json", "dep:cgmath"]
 
 [dev-dependencies]
 gnuplot = "0.0.44"
 serde_json = "1.0.132"
-crystallib = { path = ".", features = ["serde", "symmetry"] }
+crystallib = { path = ".", features = ["serde", "symmetry", "data"] }

@@ -2,6 +2,12 @@ mod atoms;
 mod cell;
 mod phase;
 
+#[cfg(feature = "data")]
+mod data;
+
+#[cfg(feature = "data")]
+pub use data::{COVALENT_RADII, VAN_DER_WAALS_RADII};
+
 #[cfg(feature = "symmetry")]
 mod symmetry;
 
