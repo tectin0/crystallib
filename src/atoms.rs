@@ -20,6 +20,7 @@ impl std::ops::DerefMut for Atoms {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, PartialEq)]
 pub enum AdpType {
