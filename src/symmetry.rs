@@ -213,6 +213,72 @@ macro_rules! impl_into_space_group_number {
 
 impl_into_space_group_number!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
 
+/// Maps a space-group number (1–230) to a Laue class label and optional unique-axis label.
+///
+/// Labels match the strings used by `SGLaue` / `SGUniq` in GSAS-II.
+/// Returns `("-1", None)` for unrecognised or out-of-range numbers.
+pub fn laue_and_unique_axis_from_sg_number(n: u32) -> (&'static str, Option<&'static str>) {
+    match n {
+        1 | 2 => ("-1", None),
+        3..=15 => ("2/m", Some("b")),
+        16..=74 => ("mmm", None),
+        75..=88 => ("4/m", None),
+        89..=142 => ("4/mmm", None),
+        143..=148 => ("3", None),
+        149 | 151 | 153 | 157 | 159 | 162 | 163 => ("31m", None),
+        150 | 152 | 154 | 155 | 156 | 158 | 160 | 161 | 164 | 165 | 166 | 167 => ("3m1", None),
+        168..=176 => ("6/m", None),
+        177..=194 => ("6/mmm", None),
+        195..=206 => ("m3", None),
+        207..=230 => ("m3m", None),
+        _ => ("-1", None),
+    }
+}
+
+/// Returns symmetry-independent lattice component indices for a Laue class.
+///
+/// Component indices follow GSAS-II order: `0=a`, `1=b`, `2=c`, `3=alpha`, `4=beta`, `5=gamma`.
+pub fn independent_lattice_components_for_laue(laue: &str, uniq: Option<&str>) -> Vec<u8> {
+    match laue {
+        "-1" => vec![0, 1, 2, 3, 4, 5],
+        "2/m" => match uniq {
+            Some("a") => vec![0, 1, 2, 5],
+            Some("b") => vec![0, 1, 2, 4],
+            _ => vec![0, 1, 2, 3],
+        },
+        "mmm" => vec![0, 1, 2],
+        "4/m" | "4/mmm" => vec![0, 2],
+        "6/m" | "6/mmm" | "3m1" | "31m" | "3" => vec![0, 2],
+        "3R" | "3mR" => vec![0, 3],
+        "m3m" | "m3" => vec![0],
+        _ => vec![0, 1, 2, 3, 4, 5],
+    }
+}
+
+/// Returns symmetry-independent lattice component indices for a space-group number.
+pub fn independent_lattice_components_for_space_group_number(space_group_number: u32) -> Vec<u8> {
+    let (laue, uniq) = laue_and_unique_axis_from_sg_number(space_group_number);
+    independent_lattice_components_for_laue(laue, uniq)
+}
+
+/// Maps a unit-cell parameter name to its component index (0–5).
+///
+/// The index order matches GSAS-II convention and `independent_lattice_components_for_laue`:
+/// `"a"=0`, `"b"=1`, `"c"=2`, `"alpha"=3`, `"beta"=4`, `"gamma"=5`.
+///
+/// Returns `None` for unrecognised names.
+pub fn lattice_component_index(parameter_name: &str) -> Option<u8> {
+    match parameter_name {
+        "a" => Some(0),
+        "b" => Some(1),
+        "c" => Some(2),
+        "alpha" => Some(3),
+        "beta" => Some(4),
+        "gamma" => Some(5),
+        _ => None,
+    }
+}
+
 impl IntoSpaceGroupNumber for String {
     fn into_space_group_number(&self) -> Option<u8> {
         let split = self.split_whitespace();
