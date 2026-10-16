@@ -237,7 +237,8 @@ pub fn laue_and_unique_axis_from_sg_number(n: u32) -> (&'static str, Option<&'st
 
 /// Returns symmetry-independent lattice component indices for a Laue class.
 ///
-/// Component indices follow GSAS-II order: `0=a`, `1=b`, `2=c`, `3=alpha`, `4=beta`, `5=gamma`.
+/// Component indices follow GSAS-II's reciprocal metric terms
+/// `A = [G11, G22, G33, 2·G12, 2·G13, 2·G23]`: `0=a`, `1=b`, `2=c`, `3=gamma`, `4=beta`, `5=alpha`.
 pub fn independent_lattice_components_for_laue(laue: &str, uniq: Option<&str>) -> Vec<u8> {
     match laue {
         "-1" => vec![0, 1, 2, 3, 4, 5],
@@ -264,7 +265,7 @@ pub fn independent_lattice_components_for_space_group_number(space_group_number:
 /// Maps a unit-cell parameter name to its component index (0–5).
 ///
 /// The index order matches GSAS-II convention and `independent_lattice_components_for_laue`:
-/// `"a"=0`, `"b"=1`, `"c"=2`, `"alpha"=3`, `"beta"=4`, `"gamma"=5`.
+/// `"a"=0`, `"b"=1`, `"c"=2`, `"gamma"=3`, `"beta"=4`, `"alpha"=5`.
 ///
 /// Returns `None` for unrecognised names.
 pub fn lattice_component_index(parameter_name: &str) -> Option<u8> {
@@ -272,9 +273,9 @@ pub fn lattice_component_index(parameter_name: &str) -> Option<u8> {
         "a" => Some(0),
         "b" => Some(1),
         "c" => Some(2),
-        "alpha" => Some(3),
+        "gamma" => Some(3),
         "beta" => Some(4),
-        "gamma" => Some(5),
+        "alpha" => Some(5),
         _ => None,
     }
 }
@@ -323,6 +324,23 @@ macro_rules! impl_into_space_group_symbol {
 }
 
 impl_into_space_group_symbol!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
+
+#[cfg(test)]
+mod test_lattice_components {
+    use super::{independent_lattice_components_for_laue, lattice_component_index};
+
+    #[test]
+    fn the_unique_monoclinic_angle_is_independent() {
+        for (uniq, angle) in [("a", "alpha"), ("b", "beta"), ("c", "gamma")] {
+            let independent = independent_lattice_components_for_laue("2/m", Some(uniq));
+            let component = lattice_component_index(angle).unwrap();
+            assert!(
+                independent.contains(&component),
+                "{angle} ({component}) missing from {independent:?} for unique axis {uniq}"
+            );
+        }
+    }
+}
 
 #[cfg(test)]
 mod test_spacegroup_symmetry_operations {
