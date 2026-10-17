@@ -1,16 +1,18 @@
 use cgmath::{vec3, Matrix3, Matrix4};
 
+use crate::Measured;
+
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Cell {
-    pub a: f64,
-    pub b: f64,
-    pub c: f64,
-    pub alpha: f64,
-    pub beta: f64,
-    pub gamma: f64,
-    pub volume: f64,
+    pub a: Measured,
+    pub b: Measured,
+    pub c: Measured,
+    pub alpha: Measured,
+    pub beta: Measured,
+    pub gamma: Measured,
+    pub volume: Measured,
     pub space_group: String,
     pub space_group_number: u8,
 }
@@ -18,12 +20,12 @@ pub struct Cell {
 impl Cell {
     /// Returns the transformation matrix for the unit cell with Y-up coordinates.
     pub fn transformation_matrix_y_up(&self) -> Matrix4<f32> {
-        let x = self.a as f32;
-        let y = self.c as f32;
-        let z = self.b as f32;
-        let angle_yz = (self.alpha as f32).to_radians();
-        let angle_xz = (self.gamma as f32).to_radians();
-        let angle_yx = (self.beta as f32).to_radians();
+        let x = self.a.value as f32;
+        let y = self.c.value as f32;
+        let z = self.b.value as f32;
+        let angle_yz = (self.alpha.value as f32).to_radians();
+        let angle_xz = (self.gamma.value as f32).to_radians();
+        let angle_yx = (self.beta.value as f32).to_radians();
 
         let x0 = x;
         let x1 = 0.0;

@@ -1,5 +1,6 @@
 mod atoms;
 mod cell;
+mod measured;
 mod phase;
 
 #[cfg(feature = "data")]
@@ -23,6 +24,7 @@ pub use atoms::Atom;
 pub use atoms::Atoms;
 
 pub use cell::Cell;
+pub use measured::Measured;
 pub use phase::Phase;
 
 pub use atoms::AdpType;

@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::Measured;
+
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -107,23 +109,23 @@ pub struct Atom {
     pub label: String,
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub type_: String,
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-    pub occupancy: f64,
+    pub x: Measured,
+    pub y: Measured,
+    pub z: Measured,
+    pub occupancy: Measured,
     pub multiplicity: Option<f64>,
     pub adp_type: AdpType,
-    pub u_iso_or_equiv: f64,
+    pub u_iso_or_equiv: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U11"))]
-    pub u11: f64,
+    pub u11: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U22"))]
-    pub u22: f64,
+    pub u22: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U33"))]
-    pub u33: f64,
+    pub u33: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U12"))]
-    pub u12: f64,
+    pub u12: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U13"))]
-    pub u13: f64,
+    pub u13: Measured,
     #[cfg_attr(feature = "serde", serde(rename = "U23"))]
-    pub u23: f64,
+    pub u23: Measured,
 }
