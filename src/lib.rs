@@ -18,9 +18,9 @@ mod symmetry;
 #[cfg(feature = "symmetry")]
 pub use symmetry::{
     independent_lattice_components_for_laue, independent_lattice_components_for_space_group_number,
-    lattice_component_index, laue_and_unique_axis_from_sg_number, IntoSpaceGroupNumber,
-    IntoSpaceGroupSymbol, SpaceGroupGenerators, SpaceGroupSymmetryOperations, SPACEGROUP_NUMBERS,
-    SPACEGROUP_SYMBOLS,
+    lattice_component_index, laue_and_unique_axis_from_sg_number, with_face_copies,
+    IntoSpaceGroupNumber, IntoSpaceGroupSymbol, SpaceGroupGenerators, SpaceGroupSymmetryOperations,
+    SPACEGROUP_NUMBERS, SPACEGROUP_SYMBOLS,
 };
 
 pub use atoms::Atom;

@@ -9,6 +9,13 @@ use crate::Cell;
 /// differ in the fourth decimal; for a cell of 5–20 Å this is 0.005–0.02 Å.
 pub const SAME_POSITION: f64 = 1e-3;
 
+/// How far apart (Å) copies of one site may be to be merged down to the multiplicity the site
+/// states (see [`SpaceGroupSymmetryOperations::site_positions_in_cell`]): closer than any two
+/// atoms are bonded (the shortest bond, H–H, is 0.74 Å). CIFs give special positions a little
+/// off (y = 0.249 for 1/4, 0.33 for 1/3, x = -0.0065 for 0), which puts their copies up to a
+/// few tenths of an Ångström apart.
+pub const LARGEST_SITE_MERGE: f64 = 0.5;
+
 /// The distinct positions `operations` take `point` (fractional) to, in the unit cell
 /// `[0, 1)`, with a copy on the opposite face of the cell for each coordinate on a face (so an
 /// atom at a corner shows at all eight). Positions within [`SAME_POSITION`] of each other in
@@ -17,26 +24,49 @@ pub fn equivalent_points(
     operations: &[cgmath::Matrix4<f64>],
     point: cgmath::Point3<f64>,
 ) -> Vec<cgmath::Point3<f64>> {
-    let wrap = |c: f64| {
-        let c = c.rem_euclid(1.0);
+    with_face_copies(distinct_points(operations, point, SAME_POSITION))
+}
+
+/// The positions `operations` take `point` (fractional) to, in the unit cell `[0, 1)`, those
+/// within `tolerance` of each other in every coordinate (modulo 1) as one.
+fn distinct_points(
+    operations: &[cgmath::Matrix4<f64>],
+    point: cgmath::Point3<f64>,
+    tolerance: f64,
+) -> Vec<cgmath::Point3<f64>> {
+    let same = |a: &cgmath::Point3<f64>, b: &cgmath::Point3<f64>| {
+        let delta = a - b;
+        [delta.x, delta.y, delta.z]
+            .iter()
+            .all(|d| (d - d.round()).abs() < tolerance)
+    };
+
+    let mut distinct: Vec<cgmath::Point3<f64>> = Vec::new();
+    for operation in operations {
+        let new_point = operation.transform_point(point).map(|c| c.rem_euclid(1.0));
+        if !distinct.iter().any(|known| same(known, &new_point)) {
+            distinct.push(new_point);
+        }
+    }
+    distinct
+}
+
+/// `points` (fractional, in `[0, 1)`) for drawing: a coordinate within [`SAME_POSITION`] of a
+/// face of the cell is on it, and gets a copy on the opposite face, so an atom at a corner shows
+/// at all eight.
+pub fn with_face_copies(points: Vec<cgmath::Point3<f64>>) -> Vec<cgmath::Point3<f64>> {
+    let on_face = |c: f64| {
         if c < SAME_POSITION || c > 1.0 - SAME_POSITION {
             0.0
         } else {
             c
         }
     };
-    let same = |a: &cgmath::Point3<f64>, b: &cgmath::Point3<f64>| {
-        let delta = a - b;
-        [delta.x, delta.y, delta.z]
-            .iter()
-            .all(|d| (d - d.round()).abs() < SAME_POSITION)
-    };
 
-    let mut distinct: Vec<cgmath::Point3<f64>> = Vec::new();
-    for operation in operations {
-        let new_point = operation.transform_point(point).map(wrap);
-        if !distinct.iter().any(|known| same(known, &new_point)) {
-            distinct.push(new_point);
+    let mut distinct: Vec<cgmath::Point3<f64>> = Vec::with_capacity(points.len());
+    for point in points.into_iter().map(|point| point.map(on_face)) {
+        if !distinct.contains(&point) {
+            distinct.push(point);
         }
     }
 
@@ -302,6 +332,48 @@ impl SpaceGroupSymmetryOperations {
         point: cgmath::Point3<f64>,
     ) -> Option<Vec<cgmath::Point3<f64>>> {
         Some(equivalent_points(&Self::of_cell(cell)?, point))
+    }
+
+    /// The distinct positions in the unit cell `[0, 1)` of a site at `point` (fractional) under
+    /// the symmetry operations of `cell` (see [`Self::of_cell`]), without copies on opposite
+    /// faces (see [`with_face_copies`]). Without a `multiplicity`, positions within
+    /// [`SAME_POSITION`] of each other in every coordinate are one. With one, only coinciding
+    /// positions are, and then the closest ones are merged until the site has that many, as
+    /// long as they are within [`LARGEST_SITE_MERGE`] of each other: a split site's positions
+    /// can be closer than [`SAME_POSITION`] and still distinct.
+    pub fn site_positions_in_cell(
+        cell: &Cell,
+        point: cgmath::Point3<f64>,
+        multiplicity: Option<usize>,
+    ) -> Option<Vec<cgmath::Point3<f64>>> {
+        let operations = Self::of_cell(cell)?;
+        let Some(multiplicity) = multiplicity else {
+            return Some(distinct_points(&operations, point, SAME_POSITION));
+        };
+
+        const COINCIDING: f64 = 1e-9;
+        let mut positions = distinct_points(&operations, point, COINCIDING);
+        let transformation = cell.transformation_matrix_y_up();
+        let distance = |a: &cgmath::Point3<f64>, b: &cgmath::Point3<f64>| {
+            let delta = (a - b).map(|d| d - d.round());
+            let cartesian =
+                transformation * cgmath::vec4(delta.x as f32, delta.z as f32, delta.y as f32, 0.0);
+            f64::from(cgmath::InnerSpace::magnitude(cartesian.truncate()))
+        };
+
+        while positions.len() > multiplicity {
+            let closest = (0..positions.len())
+                .flat_map(|i| (i + 1..positions.len()).map(move |j| (i, j)))
+                .map(|(i, j)| (j, distance(&positions[i], &positions[j])))
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            match closest {
+                Some((j, distance)) if distance < LARGEST_SITE_MERGE => {
+                    positions.remove(j);
+                }
+                _ => break,
+            }
+        }
+        Some(positions)
     }
 
     pub fn generate_symmetry_equivalent_points_from_points(
@@ -598,6 +670,60 @@ mod test_spacegroup_symmetry_operations {
             )
             .unwrap();
         assert_eq!(new_points.len(), 2, "{new_points:?}");
+    }
+
+    #[test]
+    fn a_site_a_little_off_its_special_position_has_its_stated_multiplicity() {
+        // Pnma, Wyckoff 4c (x, 1/4, z) written with y = 0.249: its mirror copies are 0.015 Å
+        // apart.
+        let cell = crate::Cell {
+            a: 5.4405.into(),
+            b: 7.6889.into(),
+            c: 5.4499.into(),
+            alpha: 90.0.into(),
+            beta: 90.0.into(),
+            gamma: 90.0.into(),
+            space_group_number: 62,
+            ..Default::default()
+        };
+        let positions = |point, multiplicity| {
+            super::SpaceGroupSymmetryOperations::site_positions_in_cell(&cell, point, multiplicity)
+                .unwrap()
+                .len()
+        };
+
+        let off = cgmath::Point3::new(0.486, 0.249, 0.064);
+        assert_eq!(positions(off, None), 8);
+        assert_eq!(positions(off, Some(4)), 4);
+
+        // Further off, the copies are different atoms (0.77 Å apart): no merging.
+        let far = cgmath::Point3::new(0.486, 0.2, 0.064);
+        assert_eq!(positions(far, Some(4)), 8);
+    }
+
+    #[test]
+    fn a_split_site_keeps_its_stated_multiplicity() {
+        // P2: a site split about the 2-fold axis, its copies 0.011 Å apart and so within
+        // SAME_POSITION of each other.
+        let cell = crate::Cell {
+            a: 10.0.into(),
+            b: 10.0.into(),
+            c: 10.0.into(),
+            alpha: 90.0.into(),
+            beta: 90.0.into(),
+            gamma: 90.0.into(),
+            space_group_number: 3,
+            ..Default::default()
+        };
+        let point = cgmath::Point3::new(0.0004, 0.3, 0.0004);
+        let positions = |multiplicity| {
+            super::SpaceGroupSymmetryOperations::site_positions_in_cell(&cell, point, multiplicity)
+                .unwrap()
+                .len()
+        };
+
+        assert_eq!(positions(None), 1);
+        assert_eq!(positions(Some(2)), 2);
     }
 
     #[test]
