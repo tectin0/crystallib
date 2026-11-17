@@ -1,6 +1,6 @@
 [package]
 name = "crystallib"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [dependencies]
@@ -14,6 +14,9 @@ get-size2 = { version = "0.10", features = ["derive"], optional = true }
 
 [features]
 data = ["dep:toml"]
+# Brown's bond valence table (assets/data/bvparm2020.cif), for non-profit use only: see
+# assets/data/bvparm2020-NOTICE.md.
+bvparm2020 = ["data"]
 serde = ["dep:serde"]
 symmetry = ["dep:serde", "dep:serde_json", "dep:cgmath"]
 get-size = ["dep:get-size2"]
