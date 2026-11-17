@@ -65,6 +65,38 @@ fn test_covalent_radii() {
     assert_eq!(COVALENT_RADII.get("H"), &0.31);
 }
 
+pub const METALLIC_RADII_RAW: &[u8] = include_bytes!("../assets/data/metallic-radii.toml");
+
+/// Metallic radii by element symbol (Å, mostly for 12-coordination).
+pub struct MetallicRadii(LazyLock<HashMap<String, f32>>);
+
+impl MetallicRadii {
+    pub const fn load() -> Self {
+        Self(LazyLock::new(|| {
+            let data = std::str::from_utf8(METALLIC_RADII_RAW)
+                .expect("Failed to convert metallic radii data to str");
+            toml::from_str(data).expect("Failed to parse metallic radii data from toml")
+        }))
+    }
+
+    /// The metallic radius of the element `symbol`, or `None` for a non-metal, a metal the
+    /// source gives none (Sn, Pb, Sb, Bi) or an unknown symbol.
+    pub fn get(&self, symbol: &str) -> Option<f32> {
+        self.0.get(symbol).copied()
+    }
+}
+
+pub static METALLIC_RADII: MetallicRadii = MetallicRadii::load();
+
+#[cfg(test)]
+#[test]
+fn test_metallic_radii() {
+    assert_eq!(METALLIC_RADII.get("Fe"), Some(1.26));
+    assert_eq!(METALLIC_RADII.get("Al"), Some(1.43));
+    assert_eq!(METALLIC_RADII.get("O"), None);
+    assert_eq!(METALLIC_RADII.get("Xx"), None);
+}
+
 pub const ELECTRONEGATIVITIES_RAW: &[u8] = include_bytes!("../assets/data/electronegativity.toml");
 
 /// Pauling electronegativities by element symbol.

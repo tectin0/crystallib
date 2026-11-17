@@ -8,8 +8,8 @@ mod data;
 
 #[cfg(feature = "data")]
 pub use data::{
-    BondValence, BOND_VALENCE, COVALENT_RADII, ELECTRONEGATIVITIES, OXIDATION_STATES,
-    VAN_DER_WAALS_RADII,
+    BondValence, BOND_VALENCE, COVALENT_RADII, ELECTRONEGATIVITIES, METALLIC_RADII,
+    OXIDATION_STATES, VAN_DER_WAALS_RADII,
 };
 
 #[cfg(feature = "symmetry")]
