@@ -239,6 +239,18 @@ impl BondValence {
         table
     }
 
+    /// The bond valence (v.u.) of a bond `distance` (Å) long with the parameters `(R0, b)`:
+    /// `exp((R0 - distance) / b)`.
+    pub fn valence((r0, b): (f32, f32), distance: f32) -> f32 {
+        ((r0 - distance) / b).exp()
+    }
+
+    /// The length (Å) at which a bond with the parameters `(R0, b)` has the bond valence
+    /// `valence` (v.u.): `R0 - b ln(valence)`, the inverse of [`Self::valence`].
+    pub fn distance((r0, b): (f32, f32), valence: f32) -> f32 {
+        r0 - b * valence.ln()
+    }
+
     /// `(R0, b)` (Å) of the bond between `cation` in oxidation state `state` and `anion` in
     /// `anion_state`, or `None` if neither source covers the pair.
     pub fn parameters(
@@ -326,6 +338,15 @@ mod bond_valence_tests {
         assert_eq!(OXIDATION_STATES.get("Ba"), &[2]);
         assert!(OXIDATION_STATES.get("Fe").contains(&3));
         assert!(OXIDATION_STATES.get("Xx").is_empty());
+    }
+
+    #[test]
+    fn a_bond_valence_and_its_distance_are_inverse() {
+        let parameters = (1.759, 0.37);
+
+        assert!((BondValence::valence(parameters, 1.759) - 1.0).abs() < 1e-6);
+        let distance = BondValence::distance(parameters, 0.5);
+        assert!((BondValence::valence(parameters, distance) - 0.5).abs() < 1e-6);
     }
 
     #[cfg(feature = "bvparm2020")]

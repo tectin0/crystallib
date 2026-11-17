@@ -356,8 +356,7 @@ impl SpaceGroupSymmetryOperations {
         let transformation = cell.transformation_matrix_y_up();
         let distance = |a: &cgmath::Point3<f64>, b: &cgmath::Point3<f64>| {
             let delta = (a - b).map(|d| d - d.round());
-            let cartesian =
-                transformation * cgmath::vec4(delta.x as f32, delta.z as f32, delta.y as f32, 0.0);
+            let cartesian = transformation * Cell::y_up_input(delta);
             f64::from(cgmath::InnerSpace::magnitude(cartesian.truncate()))
         };
 
