@@ -64,3 +64,35 @@ pub static COVALENT_RADII: CovalentRadii = CovalentRadii::load();
 fn test_covalent_radii() {
     assert_eq!(COVALENT_RADII.get("H"), &0.31);
 }
+
+pub const ELECTRONEGATIVITIES_RAW: &[u8] = include_bytes!("../assets/data/electronegativity.toml");
+
+/// Pauling electronegativities by element symbol.
+pub struct Electronegativities(LazyLock<HashMap<String, f32>>);
+
+impl Electronegativities {
+    pub const fn load() -> Self {
+        Self(LazyLock::new(|| {
+            let data = std::str::from_utf8(ELECTRONEGATIVITIES_RAW)
+                .expect("Failed to convert electronegativity data to str");
+            toml::from_str(data).expect("Failed to parse electronegativity data from toml")
+        }))
+    }
+
+    /// The Pauling electronegativity of the element `symbol`, or `None` for one the scale gives
+    /// none (He, Ne, Ar) or an unknown symbol.
+    pub fn get(&self, symbol: &str) -> Option<f32> {
+        self.0.get(symbol).copied()
+    }
+}
+
+pub static ELECTRONEGATIVITIES: Electronegativities = Electronegativities::load();
+
+#[cfg(test)]
+#[test]
+fn test_electronegativities() {
+    assert_eq!(ELECTRONEGATIVITIES.get("F"), Some(3.98));
+    assert_eq!(ELECTRONEGATIVITIES.get("Na"), Some(0.93));
+    assert_eq!(ELECTRONEGATIVITIES.get("He"), None);
+    assert_eq!(ELECTRONEGATIVITIES.get("Xx"), None);
+}

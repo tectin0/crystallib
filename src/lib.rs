@@ -7,7 +7,7 @@ mod phase;
 mod data;
 
 #[cfg(feature = "data")]
-pub use data::{COVALENT_RADII, VAN_DER_WAALS_RADII};
+pub use data::{COVALENT_RADII, ELECTRONEGATIVITIES, VAN_DER_WAALS_RADII};
 
 #[cfg(feature = "symmetry")]
 mod symmetry;
