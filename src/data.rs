@@ -171,8 +171,8 @@ impl BondValence {
     }
 
     /// The table's rows: `cation state anion state R0 b reference [details]`, the most reliable
-    /// entry of a pair first. Its header and notes are commented out with `#`, and its lines end
-    /// in CR LF, CR or LF.
+    /// entry of a pair first. Any other line (comments, the CIF header, the reference list) fails
+    /// to read as one and is skipped.
     #[cfg(feature = "bvparm2020")]
     fn read_table() -> HashMap<(String, i8, String, i8), (f32, f32)> {
         let data =
@@ -312,6 +312,22 @@ mod bond_valence_tests {
             Some((2.22, 0.37))
         );
         assert_eq!(BOND_VALENCE.cation_states("Fe"), vec![2, 3]);
+    }
+
+    #[cfg(feature = "bvparm2020")]
+    #[test]
+    fn the_2020_table_reads_only_its_parameter_rows() {
+        let table = super::BondValence::read_table();
+
+        assert_eq!(table.len(), 1168);
+        assert!(
+            table.keys().all(
+                |(cation, _, anion, _)| [cation, anion].iter().all(|symbol| {
+                    symbol.len() <= 2 && symbol.starts_with(|c: char| c.is_ascii_uppercase())
+                })
+            ),
+            "a line that isn't a parameter row was read as one"
+        );
     }
 
     #[cfg(not(feature = "bvparm2020"))]

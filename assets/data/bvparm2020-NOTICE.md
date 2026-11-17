@@ -3,7 +3,7 @@
 `bvparm2020.cif` is I. David Brown's accumulated table of bond valence parameters (version of
 2020-11-25), distributed by the IUCr at
 <https://www.iucr.org/resources/data/datasets/bond-valence-parameters>. It is included unchanged
-(SHA-256 `ddb176207346cafb75bab88f3c3b18bc92097813ba18f981e17c8d9dfbbd3d50`) and is not part of
+(SHA-256 `ec073207e070f8e42e49734d11ebe93de4012cc0af07016a99920877688e9a68`) and is not part of
 crystallib's GPL-3.0 license. Its own terms, from the file's header:
 
 > This table may be used and distributed without fee for non-profit purposes providing

@@ -1,13 +1,13 @@
 # ACCUMULATED TABLE OF BOND VALENCE PARAMETERS
-#
-#data_BOND_VALENCE_PARAMETERS_2020-11-25
-#
-#
+
+data_BOND_VALENCE_PARAMETERS_2020-11-25
+
+
 # BVPARM.CIF
-#_audit_conform_dict_name        cif_core.dic
-#_audit_conform_dict_version     2.2
-#
-#
+_audit_conform_dict_name        cif_core.dic
+_audit_conform_dict_version     2.2
+
+
 #***************************************************************
 # COPYRIGHT NOTICE
 # This table may be used and distributed without fee for
@@ -60,124 +60,124 @@
 #
 # Parameters marked at 'unchecked' are unreliable.
 ####################################################################3
-#
-#_audit_creation_date         2001-02-21
-#_audit_update_record         
-#;2001-03-13 Ref m deleted.
-# 2001-06-01
-# 2001-06-21 new ref c and d added.
-# 2002-03-22 new ref q added
-# 2003-02-17 refs m, z and aa added
-# 2003-02-19 corrected CIF errors
-# 2004-08-12 correction of errors
-# 2006-05-02 refs ag to ai added
-# 2007-01-20 refs ag to am added
-# 2009-08-20 refs an to be added
-# 2011-06-01 refs bf to bh added
-# 2013-09-11 refs bi to bk added
-#         correction of syntax errors, 
-#         correcting Mo to Mn for parameters from ref. ap
-# 2016-10-28 refs bl to bs added
-# 2020-11-6  refs bs to bt added, some corrections made
-# 2020-11-25 corrections made
-#;
-#_audit_author_name           'I. David Brown'
-#_audit_author_address
-#;                            Brockhouse Institute for Materials Research
-#                             McMaster University
-#                             Hamilton, Ontario, Canada L8S 4M1
-#;
-#_audit_contact_author_name   'I. David Brown'
-#_audit_contact_author_email  idbrown@mcmaster.ca  #
-#
-#loop_
-#     _valence_ref_id
-#     _valence_ref_reference
-#
-#  a 'Brown and Altermatt, (1985), Acta Cryst. B41, 244-247 (empirical)'
-#  b 'Brese and O'Keeffe, (1991), Acta Cryst. B47, 192-197 (extrapolated)'
-#  c 'Adams, 2001, Acta Cryst. B57, 278-287 (includes second neighbours)'
-#  d 'Hu et al. (1995) Inorg. Chim. Acta, 232, 161-165. '
-#  e 'I.D.Brown Private communication'
-#  f 'Brown et al. (1984) Inorg. Chem. 23, 4506-4508'
-#  g 'Palenik (1997) Inorg. Chem. 36 4888-4890'
-#  h 'Kanowitz and Palenik (1998) Inorg. Chem. 37 2086-2088'
-#  i 'Wood and Palenik (1998) Inorg. Chem. 37 4149-4151'
-#  j 'Liu and Thorp (1993) Inorg. Chem. 32 4102-4105'
-#  k 'Palenik (1997) Inorg. Chem. 36 3394-3397'
-#  l 'Shields, Raithby, Allen and Motherwell (2000) Acta Cryst.B56, 455-465' 
-#  m 'Chen, Zhou and Hu (2002) Chinese Sci. Bul. 47, 978-980.'
-#  n 'Kihlbourg (1963) Ark. Kemi 21 471-495; Schroeder 1975 Acta Cryst. B31, 2294'
-#  o 'Allmann (1975) Monatshefte Chem. 106, 779'
-#  p 'Zachariasen (1978) J.Less Common Metals 62, 1'
-#  q 'Krivovichev and Brown (2001) Z. Krist. 216, 245'
-#  r 'Burns, Ewing and Hawthorne (1997) Can. Miner. 35,1551-1570'
-#  s 'Garcia-Rodriguez, et al. (2000) Acta Cryst. B56, 565-569'
-#  t 'Mahapatra et al. (1996) J. Amer.Chem. Soc. 118, 11555'
-#  u 'Wood and Palenik (1999) Inorg. Chem. 38, 1031-1034'
-#  v 'Wood and Palenik (1999) Inorg. Chem. 38, 3926-3930'
-#  w 'Wood, Abboud, Palenik and Palenik (2000) Inorg. Chem. 39, 2065-2068'
-#  x 'Tytko, Mehnike and Kurad (1999) Structure and Bonding 93, 1-66'
-#  y 'Gruendemann, et al.(1999) J. Phys. Chem. A 103, 4752-4754'
-#  z 'Zocchi (2000) Solid State Sci. 2 383-387'
-# aa 'Jensen, Palenik and Tiekiak (2001) Polyhedron 20, 2137'
-# ab 'Roulhac and Palenik (2003) Inorg. Chem. 42, 118-121'
-# ac 'Holsa et al.(2002) J.Solid State Chem 165, 48-55'
-# ae 'Trzesowska, Kruszynski & Bartezak (2004) Acta Cryst. B60, 174-178'
-# af 'Locock & Burns (2004) Z.Krist. 219, 259-266'
-# ag 'Hu & Zhou (2004) Z. Krist. 219 614-620'
-# ah 'Trzesowska, Kruszynski & Bartczak (2005) Acta Cryst. B61 429-434'
-# ai 'Palenik (2003) Inorg. Chem. 42, 2725-2728'
-# aj 'Hong, Zhou & Hu (2004) Acta Chimica Sinica 62, 1733-1737'
-# ak 'Sidey (2006) Acta Cryst. B62, 949-951'
-# al 'Trzeowska, Kruszynski & Bartczak (2006) Acta Cryst. B62, 745-753'
-# am 'Malcherek & Schlueter (2007) Acta Cryst. B63, 157-160'
-# an 'Palenik, Abboud & Palenik (2005) Inorg. Chim. Acta 358, 1034'
-# ao 'Palenik (2006) Can. J. Chem. 84, 99'
-# ap 'Urusov (2006) Dokl. Phys. Chem. 408, 152'
-# aq 'Hu (2007) Acta Phys-Chim. Sin 23, 786-789'
-# ar '(=q)'
-# as 'Wester & Hess (2005) Inorg. Chim. Acta 358, 865-874'
-# at 'Urusov (2006) Dokl. Phys-Chem. 408, 169-174'
-# au 'Yu & Xue (2006) Acta Cryst. B62, 702'
-# av 'Henke (2007) Z. Krist. 222, 477-486'
-# aw 'Sidey, Milyan, Semrad & Solomon (2008) J. Alloys Compds. 457, 480'
-# ax 'Adams, Moretsky & Canadell (2004) Solid State Ionics, 168, 281'
-# ay 'Cabana et al. (2004) Inorg. Chem. 43, 7050'
-# az 'Grabowski (2000) J. Mol. Struct. 552, 153'
-# ba 'Yu, Xue & Ratajczak (2006) Physica B371, 170'
-# bb 'Majerz & Olovsson (2007) Acta Cryst. B63, 650'
-# bc 'Brown (2002) The Chemical Bond in Inorganic Chemistry, OUP, p.230'
-# bd 'Sidey (2009) Acta Cryst, B65, 99-101'
-# be 'Mills, Christy, Chen & Raudsepp, (2009) Z. Krist. 224, 423-431'
-# bf 'Diwu, et al. (2010) Inorg Chem. 49 3337-3342'
-# bg 'Sidey (2010) Acta Cryst. B66, 307-314'
-# bh 'Brown (2009) Acta Cryst. B65, 684-693'
-# bi 'Sidey (2012) Private communication'
-# bj 'Krivovichev (2012) Z. Krist. 227, 575-579'
-# bk 'Mills & Christy (2013) Acta Cryst. B69, 145-149'
-# bl 'Palenik & Hu (2009) Inorg. Chim. Acta 362, 4740-4743'
-# bm 'Palenik & Hu (2011) Chinese J. Struct. Chem. 30, 1820-1826'
-# bn 'Hu, Xie & Palenik (2012) Acta Phys-Chim. Sin. 28, 19-24'
-# bo 'Nyman, Rodriguez & Campana (2010) Inorg. Chem. 49, 7748-7755'
-# bp 'Sidey, Zubaka, Stercho & Peresh (2010) Chem. Metals Alloys 3, 108-114'
-# bq 'Hu ShengZhi (2014) to be published'
-# br 'Czervinska, Madura, Zachara (2016) Acta Cryst. B72, 241-248'
-# bs 'Gagne & Hawthorne (2015) Acta Cryst. B71, 561-578'
-# bt 'Yee, Suesdn & Rbuffetti (2018) J.Solid State Chem. 270, 242-246.'
-# bu  'Zheng et al. (2017) Acta Cryst. D73, 316-125'
-# bv  'Sdidey & Shteyfan (2017) J. Phys. Chem. Solids, 103, 73-75.'#
-#
-#loop_
-#   _valence_param_atom_1
-#   _valence_param_atom_1_valence
-#   _valence_param_atom_2
-#   _valence_param_atom_2_valence
-#   _valence_param_Ro
-#   _valence_param_B
-#   _valence_param_ref_id
-#   _valence_param_details
-#source	v1	target	v2	r0	b	ref	note 
+
+_audit_creation_date         2001-02-21
+_audit_update_record         
+;2001-03-13 Ref m deleted.
+ 2001-06-01
+ 2001-06-21 new ref c and d added.
+ 2002-03-22 new ref q added
+ 2003-02-17 refs m, z and aa added
+ 2003-02-19 corrected CIF errors
+ 2004-08-12 correction of errors
+ 2006-05-02 refs ag to ai added
+ 2007-01-20 refs ag to am added
+ 2009-08-20 refs an to be added
+ 2011-06-01 refs bf to bh added
+ 2013-09-11 refs bi to bk added
+         correction of syntax errors, 
+         correcting Mo to Mn for parameters from ref. ap
+ 2016-10-28 refs bl to bs added
+ 2020-11-6  refs bs to bt added, some corrections made
+ 2020-11-25 corrections made
+;
+_audit_author_name           'I. David Brown'
+_audit_author_address
+;                            Brockhouse Institute for Materials Research
+                             McMaster University
+                             Hamilton, Ontario, Canada L8S 4M1
+;
+_audit_contact_author_name   'I. David Brown'
+_audit_contact_author_email  idbrown@mcmaster.ca  
+
+loop_
+     _valence_ref_id
+     _valence_ref_reference
+
+  a 'Brown and Altermatt, (1985), Acta Cryst. B41, 244-247 (empirical)'
+  b 'Brese and O'Keeffe, (1991), Acta Cryst. B47, 192-197 (extrapolated)'
+  c 'Adams, 2001, Acta Cryst. B57, 278-287 (includes second neighbours)'
+  d 'Hu et al. (1995) Inorg. Chim. Acta, 232, 161-165. '
+  e 'I.D.Brown Private communication'
+  f 'Brown et al. (1984) Inorg. Chem. 23, 4506-4508'
+  g 'Palenik (1997) Inorg. Chem. 36 4888-4890'
+  h 'Kanowitz and Palenik (1998) Inorg. Chem. 37 2086-2088'
+  i 'Wood and Palenik (1998) Inorg. Chem. 37 4149-4151'
+  j 'Liu and Thorp (1993) Inorg. Chem. 32 4102-4105'
+  k 'Palenik (1997) Inorg. Chem. 36 3394-3397'
+  l 'Shields, Raithby, Allen and Motherwell (2000) Acta Cryst.B56, 455-465' 
+  m 'Chen, Zhou and Hu (2002) Chinese Sci. Bul. 47, 978-980.'
+  n 'Kihlbourg (1963) Ark. Kemi 21 471-495; Schroeder 1975 Acta Cryst. B31, 2294'
+  o 'Allmann (1975) Monatshefte Chem. 106, 779'
+  p 'Zachariasen (1978) J.Less Common Metals 62, 1'
+  q 'Krivovichev and Brown (2001) Z. Krist. 216, 245'
+  r 'Burns, Ewing and Hawthorne (1997) Can. Miner. 35,1551-1570'
+  s 'Garcia-Rodriguez, et al. (2000) Acta Cryst. B56, 565-569'
+  t 'Mahapatra et al. (1996) J. Amer.Chem. Soc. 118, 11555'
+  u 'Wood and Palenik (1999) Inorg. Chem. 38, 1031-1034'
+  v 'Wood and Palenik (1999) Inorg. Chem. 38, 3926-3930'
+  w 'Wood, Abboud, Palenik and Palenik (2000) Inorg. Chem. 39, 2065-2068'
+  x 'Tytko, Mehnike and Kurad (1999) Structure and Bonding 93, 1-66'
+  y 'Gruendemann, et al.(1999) J. Phys. Chem. A 103, 4752-4754'
+  z 'Zocchi (2000) Solid State Sci. 2 383-387'
+ aa 'Jensen, Palenik and Tiekiak (2001) Polyhedron 20, 2137'
+ ab 'Roulhac and Palenik (2003) Inorg. Chem. 42, 118-121'
+ ac 'Holsa et al.(2002) J.Solid State Chem 165, 48-55'
+ ae 'Trzesowska, Kruszynski & Bartezak (2004) Acta Cryst. B60, 174-178'
+ af 'Locock & Burns (2004) Z.Krist. 219, 259-266'
+ ag 'Hu & Zhou (2004) Z. Krist. 219 614-620'
+ ah 'Trzesowska, Kruszynski & Bartczak (2005) Acta Cryst. B61 429-434'
+ ai 'Palenik (2003) Inorg. Chem. 42, 2725-2728'
+ aj 'Hong, Zhou & Hu (2004) Acta Chimica Sinica 62, 1733-1737'
+ ak 'Sidey (2006) Acta Cryst. B62, 949-951'
+ al 'Trzeowska, Kruszynski & Bartczak (2006) Acta Cryst. B62, 745-753'
+ am 'Malcherek & Schlueter (2007) Acta Cryst. B63, 157-160'
+ an 'Palenik, Abboud & Palenik (2005) Inorg. Chim. Acta 358, 1034'
+ ao 'Palenik (2006) Can. J. Chem. 84, 99'
+ ap 'Urusov (2006) Dokl. Phys. Chem. 408, 152'
+ aq 'Hu (2007) Acta Phys-Chim. Sin 23, 786-789'
+ ar '(=q)'
+ as 'Wester & Hess (2005) Inorg. Chim. Acta 358, 865-874'
+ at 'Urusov (2006) Dokl. Phys-Chem. 408, 169-174'
+ au 'Yu & Xue (2006) Acta Cryst. B62, 702'
+ av 'Henke (2007) Z. Krist. 222, 477-486'
+ aw 'Sidey, Milyan, Semrad & Solomon (2008) J. Alloys Compds. 457, 480'
+ ax 'Adams, Moretsky & Canadell (2004) Solid State Ionics, 168, 281'
+ ay 'Cabana et al. (2004) Inorg. Chem. 43, 7050'
+ az 'Grabowski (2000) J. Mol. Struct. 552, 153'
+ ba 'Yu, Xue & Ratajczak (2006) Physica B371, 170'
+ bb 'Majerz & Olovsson (2007) Acta Cryst. B63, 650'
+ bc 'Brown (2002) The Chemical Bond in Inorganic Chemistry, OUP, p.230'
+ bd 'Sidey (2009) Acta Cryst, B65, 99-101'
+ be 'Mills, Christy, Chen & Raudsepp, (2009) Z. Krist. 224, 423-431'
+ bf 'Diwu, et al. (2010) Inorg Chem. 49 3337-3342'
+ bg 'Sidey (2010) Acta Cryst. B66, 307-314'
+ bh 'Brown (2009) Acta Cryst. B65, 684-693'
+ bi 'Sidey (2012) Private communication'
+ bj 'Krivovichev (2012) Z. Krist. 227, 575-579'
+ bk 'Mills & Christy (2013) Acta Cryst. B69, 145-149'
+ bl 'Palenik & Hu (2009) Inorg. Chim. Acta 362, 4740-4743'
+ bm 'Palenik & Hu (2011) Chinese J. Struct. Chem. 30, 1820-1826'
+ bn 'Hu, Xie & Palenik (2012) Acta Phys-Chim. Sin. 28, 19-24'
+ bo 'Nyman, Rodriguez & Campana (2010) Inorg. Chem. 49, 7748-7755'
+ bp 'Sidey, Zubaka, Stercho & Peresh (2010) Chem. Metals Alloys 3, 108-114'
+ bq 'Hu ShengZhi (2014) to be published'
+ br 'Czervinska, Madura, Zachara (2016) Acta Cryst. B72, 241-248'
+ bs 'Gagne & Hawthorne (2015) Acta Cryst. B71, 561-578'
+ bt 'Yee, Suescun & Rabuffetti (2018) J.Solid State Chem. 270, 242-246.'
+ bu  'Zheng et al. (2017) Acta Cryst. D73, 316-125'
+ bv  'Sdidey & Shteyfan (2017) J. Phys. Chem. Solids, 103, 73-75.'
+
+loop_
+   _valence_param_atom_1
+   _valence_param_atom_1_valence
+   _valence_param_atom_2
+   _valence_param_atom_2_valence
+   _valence_param_Ro
+   _valence_param_B
+   _valence_param_ref_id
+   _valence_param_details
+
 Ac 3   O  -2    2.24     0.37     b   ?
 Ac 3   O  -2    2.29     0.35     p   ?
 Ac 3   F  -1    2.13     0.37     b   ?
@@ -2112,3 +2112,4 @@ Zr 4   N  -3    2.15     0.37     e   unchecked
 Zr 4   P  -3    2.52     0.37     b   ?
 Zr 4   As -3    2.57     0.37     b   ?
 Zr 4   H  -1    1.79     0.37     b   ?
+#### EOF #### EOF #### EOF #### EOF #### EOF #### EOF #### EOF #### EOF ###
