@@ -2,6 +2,135 @@ use std::{collections::BTreeMap, sync::LazyLock};
 
 use cgmath::Transform;
 
+use crate::Cell;
+
+/// How close (in every fractional coordinate) two positions are to count as one. CIFs round
+/// special positions (1/3 as 0.3333), so symmetry operations turn one position into copies that
+/// differ in the fourth decimal; for a cell of 5–20 Å this is 0.005–0.02 Å.
+pub const SAME_POSITION: f64 = 1e-3;
+
+/// The distinct positions `operations` take `point` (fractional) to, in the unit cell
+/// `[0, 1)`, with a copy on the opposite face of the cell for each coordinate on a face (so an
+/// atom at a corner shows at all eight). Positions within [`SAME_POSITION`] of each other in
+/// every coordinate (modulo 1) are one; a coordinate within it of a face is on it.
+pub fn equivalent_points(
+    operations: &[cgmath::Matrix4<f64>],
+    point: cgmath::Point3<f64>,
+) -> Vec<cgmath::Point3<f64>> {
+    let wrap = |c: f64| {
+        let c = c.rem_euclid(1.0);
+        if c < SAME_POSITION || c > 1.0 - SAME_POSITION {
+            0.0
+        } else {
+            c
+        }
+    };
+    let same = |a: &cgmath::Point3<f64>, b: &cgmath::Point3<f64>| {
+        let delta = a - b;
+        [delta.x, delta.y, delta.z]
+            .iter()
+            .all(|d| (d - d.round()).abs() < SAME_POSITION)
+    };
+
+    let mut distinct: Vec<cgmath::Point3<f64>> = Vec::new();
+    for operation in operations {
+        let new_point = operation.transform_point(point).map(wrap);
+        if !distinct.iter().any(|known| same(known, &new_point)) {
+            distinct.push(new_point);
+        }
+    }
+
+    let mut points = Vec::with_capacity(distinct.len());
+    for point in distinct {
+        let shifts = |c: f64| if c == 0.0 { vec![0.0, 1.0] } else { vec![0.0] };
+        for dx in shifts(point.x) {
+            for dy in shifts(point.y) {
+                for dz in shifts(point.z) {
+                    points.push(cgmath::Point3::new(
+                        point.x + dx,
+                        point.y + dy,
+                        point.z + dz,
+                    ));
+                }
+            }
+        }
+    }
+    points
+}
+
+/// The symmetry operation `text` writes as CIFs do, each coordinate a sum of `x`, `y`, `z`
+/// with signs and of a constant (`-x+y, -x, z+1/3`, `1/2+x, y, -z`, `x, y, z+0.5`), as the
+/// matrix that transforms fractional coordinates. `None` if it doesn't read as three such sums.
+pub fn parse_symmetry_operation(text: &str) -> Option<cgmath::Matrix4<f64>> {
+    let text = text.trim().trim_matches(|c| c == '\'' || c == '"');
+    let rows: Vec<&str> = text.split(',').collect();
+    let [x, y, z] = rows[..] else {
+        return None;
+    };
+
+    let mut matrix = cgmath::Matrix4::from_scale(0.0);
+    matrix.w.w = 1.0;
+    for (row, expression) in [x, y, z].into_iter().enumerate() {
+        let (coefficients, constant) = parse_symmetry_component(expression)?;
+        matrix.x[row] = coefficients[0];
+        matrix.y[row] = coefficients[1];
+        matrix.z[row] = coefficients[2];
+        matrix.w[row] = constant;
+    }
+    Some(matrix)
+}
+
+/// The coefficients of `x`, `y` and `z` and the constant of one coordinate of a symmetry
+/// operation (`-x+y`, `z+1/3`, `1/2-y`, `2x`).
+fn parse_symmetry_component(expression: &str) -> Option<([f64; 3], f64)> {
+    let expression: String = expression.chars().filter(|c| !c.is_whitespace()).collect();
+    if expression.is_empty() {
+        return None;
+    }
+
+    let mut coefficients = [0.0; 3];
+    let mut constant = 0.0;
+
+    let mut terms = Vec::new();
+    let mut start = 0;
+    for (index, c) in expression.char_indices() {
+        if (c == '+' || c == '-') && index > start {
+            terms.push(&expression[start..index]);
+            start = index;
+        }
+    }
+    terms.push(&expression[start..]);
+
+    for term in terms {
+        let (sign, body) = match term.as_bytes().first()? {
+            b'-' => (-1.0, &term[1..]),
+            b'+' => (1.0, &term[1..]),
+            _ => (1.0, term),
+        };
+        let number = |text: &str| -> Option<f64> {
+            if text.is_empty() {
+                return Some(1.0);
+            }
+            match text.split_once('/') {
+                Some((numerator, denominator)) => {
+                    Some(numerator.parse::<f64>().ok()? / denominator.parse::<f64>().ok()?)
+                }
+                None => text.parse::<f64>().ok(),
+            }
+        };
+
+        match body.chars().last()?.to_ascii_lowercase() {
+            axis @ ('x' | 'y' | 'z') => {
+                let factor = number(body[..body.len() - 1].trim_end_matches('*'))?;
+                coefficients[(axis as u8 - b'x') as usize] += sign * factor;
+            }
+            _ => constant += sign * number(body)?,
+        }
+    }
+
+    Some((coefficients, constant))
+}
+
 const SPACEGROUP_SYMMETRY_OPERATIONS_RAW: &str =
     include_str!("../assets/spacegroup_symmetry_operations.json");
 
@@ -133,34 +262,46 @@ impl SpaceGroupSymmetryOperations {
         &SPACEGROUP_SYMMETRY_OPERATIONS
     }
 
+    /// The symmetry operations of `cell`: the ones it states (see [`Cell::symmetry_operations`])
+    /// if it states any and all of them read, else those of its space group number in the
+    /// standard setting.
+    pub fn of_cell(cell: &Cell) -> Option<Vec<cgmath::Matrix4<f64>>> {
+        if !cell.symmetry_operations.is_empty() {
+            let stated: Option<Vec<_>> = cell
+                .symmetry_operations
+                .iter()
+                .map(|operation| parse_symmetry_operation(operation))
+                .collect();
+            match stated {
+                Some(operations) => return Some(operations),
+                None => log::warn!(
+                    "A symmetry operation of space group {} doesn't read; using the standard \
+                     setting of its number",
+                    cell.space_group
+                ),
+            }
+        }
+
+        Self::get(cell.space_group_number).cloned()
+    }
+
+    /// The positions in the unit cell equivalent to `point` (fractional) under the symmetry
+    /// operations of `space_group_number` in its standard setting (see
+    /// [`equivalent_points`]).
     pub fn generate_symmetry_equivalent_points_from_point(
         space_group_number: impl IntoSpaceGroupNumber,
         point: cgmath::Point3<f64>,
     ) -> Option<Vec<cgmath::Point3<f64>>> {
-        let symmetry_operations = Self::get(space_group_number)?;
+        Some(equivalent_points(Self::get(space_group_number)?, point))
+    }
 
-        let new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = symmetry_operations
-            .iter()
-            .map(|m| {
-                let new_point = m.transform_point(point);
-                let new_point = move_point_into_unit_cell(new_point);
-
-                TRIVIAL_TRANSLATIONS
-                    .iter()
-                    .map(move |t| {
-                        let new_point = t.transform_point(new_point);
-                        let new_point = move_point_into_unit_cell(new_point);
-
-                        let decoded = point3_decode(new_point);
-
-                        (decoded, new_point)
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .flatten()
-            .collect();
-
-        Some(new_points.into_values().collect())
+    /// The positions in the unit cell equivalent to `point` (fractional) under the symmetry
+    /// operations of `cell` (see [`Self::of_cell`] and [`equivalent_points`]).
+    pub fn generate_symmetry_equivalent_points_in_cell(
+        cell: &Cell,
+        point: cgmath::Point3<f64>,
+    ) -> Option<Vec<cgmath::Point3<f64>>> {
+        Some(equivalent_points(&Self::of_cell(cell)?, point))
     }
 
     pub fn generate_symmetry_equivalent_points_from_points(
@@ -426,32 +567,120 @@ mod test_spacegroup_symmetry_operations {
 
     #[test]
     fn test_symmetry_equivalent_points() {
-        let point = cgmath::Point3::new(0.0, 0.0, 0.0);
-
+        // P1: an atom at the origin shows at all eight corners of the cell.
         let new_points =
             super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_from_point(
-                1, point,
+                1,
+                cgmath::Point3::new(0.0, 0.0, 0.0),
             )
             .unwrap();
+        assert_eq!(new_points.len(), 8);
+        assert!(new_points.contains(&cgmath::Point3::new(1.0, 1.0, 1.0)));
 
-        let expected = vec![point];
-
-        assert_eq!(new_points, expected);
-
-        let point = cgmath::Point3::new(0.5, 0.5, 0.5);
-
+        // P2 (unique axis b): (x, y, z) and (-x, y, -z), wrapped into the cell.
         let new_points =
             super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_from_point(
-                3, point,
+                3,
+                cgmath::Point3::new(0.25, 0.5, 0.25),
             )
             .unwrap();
+        assert_eq!(new_points.len(), 2);
+        assert!(new_points.contains(&cgmath::Point3::new(0.75, 0.5, 0.75)));
+    }
 
-        let expected = vec![
-            cgmath::Point3::new(-0.5, 0.5, -0.5),
-            cgmath::Point3::new(0.5, 0.5, 0.5),
+    #[test]
+    fn rounded_special_positions_are_one_position() {
+        // P6_3/mmc, Wyckoff 2c (1/3, 2/3, 1/4) as CIFs write it: two positions, not more.
+        let new_points =
+            super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_from_point(
+                194,
+                cgmath::Point3::new(0.3333, 0.6667, 0.25),
+            )
+            .unwrap();
+        assert_eq!(new_points.len(), 2, "{new_points:?}");
+    }
+
+    #[test]
+    fn symmetry_operations_read_as_cifs_write_them() {
+        use cgmath::Transform;
+
+        let operation = super::parse_symmetry_operation("'-x+y, -x, z+1/3'").unwrap();
+        let point = operation.transform_point(cgmath::Point3::new(0.1, 0.4, 0.2));
+        assert!((point.x - 0.3).abs() < 1e-12);
+        assert!((point.y + 0.1).abs() < 1e-12);
+        assert!((point.z - (0.2 + 1.0 / 3.0)).abs() < 1e-12);
+
+        let operation = super::parse_symmetry_operation("1/2+X, y, -z+0.5").unwrap();
+        let point = operation.transform_point(cgmath::Point3::new(0.1, 0.4, 0.2));
+        assert_eq!(point, cgmath::Point3::new(0.6, 0.4, 0.3));
+
+        assert!(super::parse_symmetry_operation("x, y").is_none());
+        assert!(super::parse_symmetry_operation("x, y, q").is_none());
+    }
+
+    #[test]
+    fn a_cell_with_its_own_operations_generates_in_its_setting() {
+        // P4/nmm in origin choice 2: Al at (0, 0, 0) is on Wyckoff 4d there, but the standard
+        // setting (origin choice 1) puts that point on a 2-fold position.
+        let operations = [
+            "y+1/2, x+1/2, -z",
+            "-y, x+1/2, -z",
+            "y+1/2, -x, -z",
+            "-y, -x, -z",
+            "x+1/2, y+1/2, -z",
+            "-x, y+1/2, -z",
+            "x+1/2, -y, -z",
+            "-x, -y, -z",
+            "-y+1/2, -x+1/2, z",
+            "y, -x+1/2, z",
+            "-y+1/2, x, z",
+            "y, x, z",
+            "-x+1/2, -y+1/2, z",
+            "x, -y+1/2, z",
+            "-x+1/2, y, z",
+            "x, y, z",
         ];
+        let cell = crate::Cell {
+            space_group: "P 4/n m m Z".to_string(),
+            space_group_number: 129,
+            symmetry_operations: operations.map(str::to_string).to_vec(),
+            ..Default::default()
+        };
+        let distinct = |points: Vec<cgmath::Point3<f64>>| {
+            points
+                .into_iter()
+                .filter(|p| p.x < 1.0 && p.y < 1.0 && p.z < 1.0)
+                .count()
+        };
 
-        assert_eq!(new_points, expected);
+        let in_cell =
+            super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_in_cell(
+                &cell,
+                cgmath::Point3::new(0.0, 0.0, 0.0),
+            )
+            .unwrap();
+        assert_eq!(distinct(in_cell), 4);
+
+        let standard =
+            super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_from_point(
+                129,
+                cgmath::Point3::new(0.0, 0.0, 0.0),
+            )
+            .unwrap();
+        assert_ne!(distinct(standard), 4);
+    }
+
+    #[test]
+    fn a_cell_without_operations_uses_its_space_group_number() {
+        let cell = crate::Cell {
+            space_group_number: 194,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            super::SpaceGroupSymmetryOperations::of_cell(&cell),
+            super::SpaceGroupSymmetryOperations::get(194).cloned()
+        );
     }
 }
 

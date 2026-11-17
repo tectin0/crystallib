@@ -15,6 +15,10 @@ pub struct Cell {
     pub volume: Measured,
     pub space_group: String,
     pub space_group_number: u8,
+    /// The symmetry operations as the CIF writes them (`-x+y, -x, z+1/3`). They fix the setting
+    /// the atoms' coordinates are given in (origin choice, axes); empty for the standard setting
+    /// of `space_group_number`.
+    pub symmetry_operations: Vec<String>,
 }
 
 impl Cell {
