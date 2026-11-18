@@ -152,6 +152,119 @@ impl OxidationStates {
 
 pub static OXIDATION_STATES: OxidationStates = OxidationStates::load();
 
+pub const IONIC_RADII_RAW: &[u8] = include_bytes!("../assets/data/shannon-radii.csv");
+
+/// Shannon's (1976) effective ionic radii (Å) by element, oxidation state and coordination
+/// (`assets/data/shannon-radii.csv`, see `shannon-radii-NOTICE.md`).
+pub struct IonicRadii(LazyLock<HashMap<(String, i8), Vec<IonicRadius>>>);
+
+/// One of Shannon's radii of an element at an oxidation state.
+struct IonicRadius {
+    /// The number of neighbours.
+    coordination: u8,
+    /// Whether it is for one arrangement of them only (square planar, pyramidal).
+    arranged: bool,
+    /// Whether it is for the low spin state where the table gives both.
+    low_spin: bool,
+    /// The effective ionic radius (Å).
+    radius: f32,
+}
+
+impl IonicRadii {
+    pub const fn load() -> Self {
+        Self(LazyLock::new(|| {
+            let data = std::str::from_utf8(IONIC_RADII_RAW)
+                .expect("Failed to convert ionic radii data to str");
+            let mut radii: HashMap<(String, i8), Vec<IonicRadius>> = HashMap::new();
+            for line in data.lines().skip(1) {
+                let fields: Vec<&str> = line.split(',').collect();
+                let [element, charge, coordination, spin, _crystal, ionic] = fields[..] else {
+                    panic!("Failed to read the ionic radii row {line:?}");
+                };
+                let numeral = coordination
+                    .strip_suffix("SQ")
+                    .or_else(|| coordination.strip_suffix("PY"))
+                    .unwrap_or(coordination);
+                let radius = IonicRadius {
+                    coordination: from_roman(numeral)
+                        .unwrap_or_else(|| panic!("Unknown coordination {coordination:?}")),
+                    arranged: numeral.len() != coordination.len(),
+                    low_spin: spin == "Low Spin",
+                    radius: ionic.parse().expect("Failed to read an ionic radius"),
+                };
+                let charge = charge.parse().expect("Failed to read an ionic charge");
+                radii
+                    .entry((element.to_string(), charge))
+                    .or_default()
+                    .push(radius);
+            }
+            radii
+        }))
+    }
+
+    /// The effective ionic radius (Å) of the element `symbol` at the oxidation state `charge`
+    /// with `coordination` neighbours: the table's for that many, else for the number nearest
+    /// it (the larger of two as near). Where the table gives several for one number, the one
+    /// for any arrangement comes before those for square planar or pyramidal, high spin before
+    /// low. `None` for a state the table gives none for.
+    pub fn get(&self, symbol: &str, charge: i8, coordination: usize) -> Option<f32> {
+        let distance =
+            |radius: &IonicRadius| usize::from(radius.coordination).abs_diff(coordination);
+        self.0
+            .get(&(symbol.to_string(), charge))?
+            .iter()
+            .min_by_key(|radius| {
+                (
+                    distance(radius),
+                    std::cmp::Reverse(radius.coordination),
+                    radius.arranged,
+                    radius.low_spin,
+                )
+            })
+            .map(|radius| radius.radius)
+    }
+}
+
+/// The number a Roman numeral from I to XIV writes.
+fn from_roman(numeral: &str) -> Option<u8> {
+    const NUMERALS: [&str; 14] = [
+        "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV",
+    ];
+    let index = NUMERALS.iter().position(|known| *known == numeral)?;
+    u8::try_from(index + 1).ok()
+}
+
+pub static IONIC_RADII: IonicRadii = IonicRadii::load();
+
+#[cfg(test)]
+#[test]
+fn test_ionic_radii() {
+    assert_eq!(IONIC_RADII.get("Na", 1, 6), Some(1.02));
+    assert_eq!(IONIC_RADII.get("O", -2, 6), Some(1.4));
+    // Fe3+ at 6 is high spin 0.645, low spin 0.55.
+    assert_eq!(IONIC_RADII.get("Fe", 3, 6), Some(0.645));
+    // Fe2+ at 4 is 0.63, square planar 0.64.
+    assert_eq!(IONIC_RADII.get("Fe", 2, 4), Some(0.63));
+    // Ag2+ has only square planar at 4.
+    assert_eq!(IONIC_RADII.get("Ag", 2, 4), Some(0.79));
+    // Al3+ has 4, 5 and 6; 7 takes 6, 3 takes 4.
+    assert_eq!(IONIC_RADII.get("Al", 3, 7), IONIC_RADII.get("Al", 3, 6));
+    assert_eq!(IONIC_RADII.get("Al", 3, 3), IONIC_RADII.get("Al", 3, 4));
+    assert_eq!(IONIC_RADII.get("Fe", 7, 6), None);
+    assert_eq!(IONIC_RADII.get("Xx", 1, 6), None);
+}
+
+#[cfg(test)]
+#[test]
+fn every_ionic_radius_row_is_read() {
+    let rows = std::str::from_utf8(IONIC_RADII_RAW)
+        .unwrap()
+        .lines()
+        .count()
+        - 1;
+    assert_eq!(IONIC_RADII.0.values().map(Vec::len).sum::<usize>(), rows);
+}
+
 pub const BOND_VALENCE_1991_RAW: &[u8] = include_bytes!("../assets/data/bond-valence-1991.toml");
 
 #[cfg(feature = "bvparm2020")]

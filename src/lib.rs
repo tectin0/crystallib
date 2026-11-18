@@ -8,7 +8,7 @@ mod data;
 
 #[cfg(feature = "data")]
 pub use data::{
-    BondValence, BOND_VALENCE, COVALENT_RADII, ELECTRONEGATIVITIES, METALLIC_RADII,
+    BondValence, BOND_VALENCE, COVALENT_RADII, ELECTRONEGATIVITIES, IONIC_RADII, METALLIC_RADII,
     OXIDATION_STATES, VAN_DER_WAALS_RADII,
 };
 
@@ -20,7 +20,7 @@ pub use symmetry::{
     independent_lattice_components_for_laue, independent_lattice_components_for_space_group_number,
     lattice_component_index, laue_and_unique_axis_from_sg_number, with_face_copies,
     IntoSpaceGroupNumber, IntoSpaceGroupSymbol, SpaceGroupGenerators, SpaceGroupSymmetryOperations,
-    SPACEGROUP_NUMBERS, SPACEGROUP_SYMBOLS,
+    SAME_POSITION, SPACEGROUP_NUMBERS, SPACEGROUP_SYMBOLS,
 };
 
 pub use atoms::Atom;
