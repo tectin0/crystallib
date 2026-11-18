@@ -40,7 +40,9 @@ impl Cell {
     }
 
     /// Returns the transformation matrix for the unit cell with Y-up coordinates. It takes a
-    /// fractional vector in the order a, c, b (see [`Self::y_up_input`]).
+    /// fractional vector in the order a, c, b (see [`Self::y_up_input`]). a lies along x, c in the
+    /// xy plane (up for an orthogonal cell), and b towards −z, so a, b and c form a right-handed
+    /// frame, as crystallographic axes do: a structure isn't drawn as its mirror image.
     pub fn transformation_matrix_y_up(&self) -> Matrix4<f32> {
         let x = self.a.value as f32;
         let y = self.c.value as f32;
@@ -59,7 +61,7 @@ impl Cell {
 
         let z0 = z * (angle_xz.cos());
         let z1 = z * (angle_yz.cos() - angle_xz.cos() * angle_yx.cos()) / angle_yx.sin();
-        let z2 = z
+        let z2 = -z
             * (angle_xz.sin().powi(2)
                 - (angle_yz.cos() - angle_xz.cos() * angle_yx.cos()).powi(2)
                     / angle_yx.sin().powi(2))
@@ -80,7 +82,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn c_points_up_and_b_along_z() {
+    fn a_b_and_c_form_a_right_handed_frame_of_the_cells_volume() {
+        // Triclinic, so every angle enters.
+        let cell = Cell {
+            a: 5.0.into(),
+            b: 6.0.into(),
+            c: 7.0.into(),
+            alpha: 80.0.into(),
+            beta: 95.0.into(),
+            gamma: 110.0.into(),
+            ..Default::default()
+        };
+        let [a, b, c] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+            .map(|axis| cell.cartesian(Vector3::from(axis)));
+
+        let triple_product = cgmath::InnerSpace::dot(a, b.cross(c));
+
+        let [alpha, beta, gamma] = [80f32, 95.0, 110.0].map(f32::to_radians);
+        let volume = 5.0
+            * 6.0
+            * 7.0
+            * (1.0 - alpha.cos().powi(2) - beta.cos().powi(2) - gamma.cos().powi(2)
+                + 2.0 * alpha.cos() * beta.cos() * gamma.cos())
+            .sqrt();
+        assert!(
+            (triple_product - volume).abs() < 1e-3,
+            "a · (b × c) = {triple_product}, the cell's volume is {volume}"
+        );
+    }
+
+    #[test]
+    fn c_points_up_and_b_along_negative_z() {
         let cell = Cell {
             a: 2.0.into(),
             b: 3.0.into(),
@@ -100,7 +132,7 @@ mod tests {
         ));
         assert!(close(
             cell.cartesian(Vector3::new(0.0, 1.0, 0.0)),
-            [0.0, 0.0, 3.0]
+            [0.0, 0.0, -3.0]
         ));
         assert!(close(
             cell.cartesian(Vector3::new(0.0, 0.0, 1.0)),
