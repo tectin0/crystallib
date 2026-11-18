@@ -5,6 +5,7 @@ use crate::Measured;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
+/// The atoms of a phase, one per site of its asymmetric unit.
 pub struct Atoms(pub Vec<Atom>);
 
 impl std::ops::Deref for Atoms {
@@ -25,14 +26,22 @@ impl std::ops::DerefMut for Atoms {
 #[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Default, Clone, PartialEq)]
+/// How an atom's displacement is given, as CIF's `_atom_site_adp_type` names it.
 pub enum AdpType {
+    /// Isotropic, as U (Å²).
     #[default]
     Uiso,
+    /// Anisotropic, as U (Å²).
     Uani,
+    /// Overall, as U (Å²).
     Uovl,
+    /// Multipole expansion, as U (Å²).
     Umpe,
+    /// Anisotropic, as B (Å²).
     Bani,
+    /// Isotropic, as B (Å²).
     Biso,
+    /// Overall, as B (Å²).
     Bovl,
 }
 
@@ -50,10 +59,12 @@ impl std::fmt::Display for AdpType {
     }
 }
 
+/// A text that names no [`AdpType`].
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseAdpTypeError(String);
 
 impl ParseAdpTypeError {
+    /// The error for the text `s`.
     pub fn new(s: impl AsRef<str>) -> Self {
         Self(format!("Invalid ADP type: {}", s.as_ref()))
     }
@@ -67,6 +78,7 @@ impl std::fmt::Display for ParseAdpTypeError {
 
 impl std::error::Error for ParseAdpTypeError {}
 
+/// Reads CIF's names (`Uiso`, `Uani`, ...) and GSAS-II's `I` (isotropic) and `A` (anisotropic).
 impl FromStr for AdpType {
     type Err = ParseAdpTypeError;
 
@@ -105,27 +117,43 @@ mod test_parse_adp_type {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
+/// An atom on a site of a phase, as CIF's `_atom_site_*` and `_atom_site_aniso_*` give it.
 pub struct Atom {
+    /// The site's label (`Ba1`).
     pub label: String,
+    /// The atom's type: its element, possibly with a charge (`Ba`, `O2-`).
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub type_: String,
+    /// The fractional coordinate along a.
     pub x: Measured,
+    /// The fractional coordinate along b.
     pub y: Measured,
+    /// The fractional coordinate along c.
     pub z: Measured,
+    /// The fraction of the site the atom occupies.
     pub occupancy: Measured,
+    /// How many positions the site has in the unit cell, where known.
     pub multiplicity: Option<f64>,
+    /// How the displacement is given.
     pub adp_type: AdpType,
+    /// The isotropic displacement, or the equivalent isotropic one of an anisotropic (Å²).
     pub u_iso_or_equiv: Measured,
+    /// The anisotropic displacement U11 (Å²); likewise the five below.
     #[cfg_attr(feature = "serde", serde(rename = "U11"))]
     pub u11: Measured,
+    /// U22 (Å²).
     #[cfg_attr(feature = "serde", serde(rename = "U22"))]
     pub u22: Measured,
+    /// U33 (Å²).
     #[cfg_attr(feature = "serde", serde(rename = "U33"))]
     pub u33: Measured,
+    /// U12 (Å²).
     #[cfg_attr(feature = "serde", serde(rename = "U12"))]
     pub u12: Measured,
+    /// U13 (Å²).
     #[cfg_attr(feature = "serde", serde(rename = "U13"))]
     pub u13: Measured,
+    /// U23 (Å²).
     #[cfg_attr(feature = "serde", serde(rename = "U23"))]
     pub u23: Measured,
 }

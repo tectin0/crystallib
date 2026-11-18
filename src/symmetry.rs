@@ -169,6 +169,8 @@ pub static SPACEGROUP_SYMMETRY_OPERATIONS: LazyLock<BTreeMap<u8, Vec<cgmath::Mat
 
 const SPACEGROUP_SYMBOLS_RAW: &str = include_str!("../assets/spacegroup_symbols.json");
 
+/// The symbol of each space group by number (1–230), as pymatgen writes it: the full
+/// Hermann–Mauguin symbol without spaces, a screw axis with `_` (`P12_1/c1`).
 pub static SPACEGROUP_SYMBOLS: LazyLock<BTreeMap<u8, String>> = LazyLock::new(|| {
     let symbols: Vec<String> = serde_json::from_str(SPACEGROUP_SYMBOLS_RAW).unwrap();
 
@@ -179,6 +181,7 @@ pub static SPACEGROUP_SYMBOLS: LazyLock<BTreeMap<u8, String>> = LazyLock::new(||
         .collect()
 });
 
+/// The number of each space group by its symbol (see [`SPACEGROUP_SYMBOLS`]).
 pub static SPACEGROUP_NUMBERS: LazyLock<BTreeMap<String, u8>> = LazyLock::new(|| {
     SPACEGROUP_SYMBOLS
         .iter()
@@ -191,27 +194,12 @@ const SPACEGROUP_GENERATORS_RAW: &str = include_str!("../assets/spacegroup_gener
 pub static SPACEGROUP_GENERATORS: LazyLock<BTreeMap<u8, Vec<cgmath::Matrix4<f64>>>> =
     LazyLock::new(|| serde_json::from_str(SPACEGROUP_GENERATORS_RAW).unwrap());
 
-pub struct SpaceGroup {}
-
-impl SpaceGroup {
-    pub fn get_symbol<'a>(space_group_number: impl IntoSpaceGroupNumber) -> Option<&'a str> {
-        let space_group_number = space_group_number.into_space_group_number()?;
-
-        SPACEGROUP_SYMBOLS
-            .get(&space_group_number)
-            .map(|s| s.as_str())
-    }
-
-    pub fn get_number<'a>(space_group_symbol: impl IntoSpaceGroupSymbol) -> Option<u8> {
-        let space_group_symbol = space_group_symbol.into_space_group_symbol()?;
-
-        SPACEGROUP_NUMBERS.get(space_group_symbol).copied()
-    }
-}
-
+/// The generators of the space groups in their standard settings, as matrices that transform
+/// fractional coordinates.
 pub struct SpaceGroupGenerators {}
 
 impl SpaceGroupGenerators {
+    /// The generators of `space_group_number`, or `None` for no space group.
     pub fn get<'a>(
         space_group_number: impl IntoSpaceGroupNumber,
     ) -> Option<&'a Vec<cgmath::Matrix4<f64>>> {
@@ -220,10 +208,14 @@ impl SpaceGroupGenerators {
         SPACEGROUP_GENERATORS.get(&space_group_number)
     }
 
+    /// The generators of every space group, by number.
     pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
         &SPACEGROUP_GENERATORS
     }
 
+    /// `point` (fractional) transformed by each generator of `space_group_number`, moved into the
+    /// unit cell and translated by 0 or 1 along each of a, b and c, each position once; `None`
+    /// for no space group.
     pub fn generate_symmetry_equivalent_points_from_point(
         space_group_number: impl IntoSpaceGroupNumber,
         point: cgmath::Point3<f64>,
@@ -232,7 +224,7 @@ impl SpaceGroupGenerators {
 
         let new_points: BTreeMap<[(u64, i16, i8); 3], cgmath::Point3<f64>> = generators
             .iter()
-            .map(|m| {
+            .flat_map(|m| {
                 let new_point = m.transform_point(point);
                 let new_point = move_point_into_unit_cell(new_point);
 
@@ -248,12 +240,13 @@ impl SpaceGroupGenerators {
                     })
                     .collect::<Vec<_>>()
             })
-            .flatten()
             .collect();
 
         Some(new_points.into_values().collect())
     }
 
+    /// The positions of [`Self::generate_symmetry_equivalent_points_from_point`] for each of
+    /// `points`, each position once.
     pub fn generate_symmetry_equivalent_points_from_points(
         space_group_number: impl IntoSpaceGroupNumber + Clone,
         points: &[cgmath::Point3<f64>],
@@ -277,9 +270,12 @@ impl SpaceGroupGenerators {
     }
 }
 
+/// The symmetry operations of the space groups in their standard settings, as matrices that
+/// transform fractional coordinates.
 pub struct SpaceGroupSymmetryOperations {}
 
 impl SpaceGroupSymmetryOperations {
+    /// The symmetry operations of `space_group_number`, or `None` for no space group.
     pub fn get<'a>(
         space_group_number: impl IntoSpaceGroupNumber,
     ) -> Option<&'a Vec<cgmath::Matrix4<f64>>> {
@@ -288,6 +284,7 @@ impl SpaceGroupSymmetryOperations {
         SPACEGROUP_SYMMETRY_OPERATIONS.get(&space_group_number)
     }
 
+    /// The symmetry operations of every space group, by number.
     pub fn get_all<'a>() -> &'a BTreeMap<u8, Vec<cgmath::Matrix4<f64>>> {
         &SPACEGROUP_SYMMETRY_OPERATIONS
     }
@@ -315,9 +312,9 @@ impl SpaceGroupSymmetryOperations {
         Self::get(cell.space_group_number).cloned()
     }
 
-    /// The positions in the unit cell equivalent to `point` (fractional) under the symmetry
-    /// operations of `space_group_number` in its standard setting (see
-    /// [`equivalent_points`]).
+    /// The positions in the unit cell `[0, 1]` equivalent to `point` (fractional) under the
+    /// symmetry operations of `space_group_number` in its standard setting, with a copy on the
+    /// opposite face for each coordinate on a face (see [`with_face_copies`]).
     pub fn generate_symmetry_equivalent_points_from_point(
         space_group_number: impl IntoSpaceGroupNumber,
         point: cgmath::Point3<f64>,
@@ -325,8 +322,9 @@ impl SpaceGroupSymmetryOperations {
         Some(equivalent_points(Self::get(space_group_number)?, point))
     }
 
-    /// The positions in the unit cell equivalent to `point` (fractional) under the symmetry
-    /// operations of `cell` (see [`Self::of_cell`] and [`equivalent_points`]).
+    /// The positions in the unit cell `[0, 1]` equivalent to `point` (fractional) under the
+    /// symmetry operations of `cell` (see [`Self::of_cell`]), with a copy on the opposite face for
+    /// each coordinate on a face (see [`with_face_copies`]).
     pub fn generate_symmetry_equivalent_points_in_cell(
         cell: &Cell,
         point: cgmath::Point3<f64>,
@@ -375,6 +373,8 @@ impl SpaceGroupSymmetryOperations {
         Some(positions)
     }
 
+    /// The positions of [`Self::generate_symmetry_equivalent_points_from_point`] for each of
+    /// `points`, each position once.
     pub fn generate_symmetry_equivalent_points_from_points(
         space_group_number: impl IntoSpaceGroupNumber + Clone,
         points: &[cgmath::Point3<f64>],
@@ -398,7 +398,10 @@ impl SpaceGroupSymmetryOperations {
     }
 }
 
+/// A space group given by its number or its symbol.
 pub trait IntoSpaceGroupNumber {
+    /// The space group's number (1–230), or `None` for a number out of range or a symbol no
+    /// space group has (see [`SPACEGROUP_NUMBERS`]; spaces in a symbol are ignored).
     fn into_space_group_number(&self) -> Option<u8>;
 }
 
@@ -407,7 +410,7 @@ macro_rules! impl_into_space_group_number {
         $(
             impl IntoSpaceGroupNumber for $t {
                 fn into_space_group_number(&self) -> Option<u8> {
-                    let id = *self as u8;
+                    let id = u8::try_from(*self).ok()?;
 
                     if SPACEGROUP_SYMBOLS.contains_key(&id) {
                         Some(id)
@@ -514,7 +517,10 @@ impl IntoSpaceGroupNumber for &str {
     }
 }
 
+/// A space group given by its number.
 pub trait IntoSpaceGroupSymbol {
+    /// The space group's symbol (see [`SPACEGROUP_SYMBOLS`]), or `None` for a number out of
+    /// 1–230.
     fn into_space_group_symbol(&self) -> Option<&str>;
 }
 
@@ -523,7 +529,7 @@ macro_rules! impl_into_space_group_symbol {
         $(
             impl IntoSpaceGroupSymbol for $t {
                 fn into_space_group_symbol(&self) -> Option<&str> {
-                    let id = *self as u8;
+                    let id = u8::try_from(*self).ok()?;
 
                     SPACEGROUP_SYMBOLS.get(&id).map(|s| s.as_str())
                 }
@@ -536,6 +542,20 @@ macro_rules! impl_into_space_group_symbol {
 }
 
 impl_into_space_group_symbol!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
+
+#[cfg(test)]
+mod test_space_group_numbers {
+    use super::{IntoSpaceGroupNumber, IntoSpaceGroupSymbol};
+
+    #[test]
+    fn a_number_out_of_range_names_no_space_group() {
+        assert_eq!(225u16.into_space_group_symbol(), Some("Fm-3m"));
+        assert_eq!(300u16.into_space_group_symbol(), None);
+        assert_eq!(300u16.into_space_group_number(), None);
+        assert_eq!((-31i32).into_space_group_number(), None);
+        assert_eq!("F m -3 m".into_space_group_number(), Some(225));
+    }
+}
 
 #[cfg(test)]
 mod test_lattice_components {
@@ -601,8 +621,7 @@ mod test_spacegroup_symmetry_operations {
                 ((mantissa, exponent, sign), x)
             })
             .collect::<BTreeMap<_, _>>()
-            .into_iter()
-            .map(|(_, v)| v)
+            .into_values()
             .collect::<Vec<_>>();
 
         assert_eq!(y, [1.0, 2.0, 3.0, 3.00002, 3.1]);
@@ -840,8 +859,8 @@ mod test_spacegroup_generators {
     }
 }
 
-const fn integer_decode(val: f64) -> (u64, i16, i8) {
-    let bits: u64 = unsafe { std::mem::transmute(val) };
+fn integer_decode(val: f64) -> (u64, i16, i8) {
+    let bits = val.to_bits();
     let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
     let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
     let mantissa = if exponent == 0 {
@@ -854,7 +873,7 @@ const fn integer_decode(val: f64) -> (u64, i16, i8) {
     (mantissa, exponent, sign)
 }
 
-const fn point3_decode(point: cgmath::Point3<f64>) -> [(u64, i16, i8); 3] {
+fn point3_decode(point: cgmath::Point3<f64>) -> [(u64, i16, i8); 3] {
     [
         integer_decode(point.x),
         integer_decode(point.y),
@@ -915,7 +934,7 @@ mod test_move_point_into_unit_cell {
     }
 }
 
-const TRIVIAL_TRANSLATIONS: LazyLock<[cgmath::Matrix4<f64>; 8]> = LazyLock::new(|| {
+static TRIVIAL_TRANSLATIONS: LazyLock<[cgmath::Matrix4<f64>; 8]> = LazyLock::new(|| {
     [
         cgmath::Matrix4::from_translation(cgmath::Vector3::new(0.0, 0.0, 0.0)),
         cgmath::Matrix4::from_translation(cgmath::Vector3::new(1.0, 0.0, 0.0)),

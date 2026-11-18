@@ -4,7 +4,9 @@
 #[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Measured {
+    /// The number.
     pub value: f64,
+    /// Its standard uncertainty, where one is known.
     pub esd: Option<f64>,
 }
 

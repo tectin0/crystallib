@@ -5,15 +5,25 @@ use crate::Measured;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Default, Debug, Clone, PartialEq)]
+/// A phase's unit cell and space group.
 pub struct Cell {
+    /// The length of a (Å).
     pub a: Measured,
+    /// The length of b (Å).
     pub b: Measured,
+    /// The length of c (Å).
     pub c: Measured,
+    /// The angle between b and c (°).
     pub alpha: Measured,
+    /// The angle between a and c (°).
     pub beta: Measured,
+    /// The angle between a and b (°).
     pub gamma: Measured,
+    /// The cell's volume (Å³).
     pub volume: Measured,
+    /// The space group's Hermann–Mauguin symbol, as the source writes it.
     pub space_group: String,
+    /// The space group's number (1–230); 0 where unknown.
     pub space_group_number: u8,
     /// The symmetry operations as the CIF writes them (`-x+y, -x, z+1/3`). They fix the setting
     /// the atoms' coordinates are given in (origin choice, axes); empty for the standard setting

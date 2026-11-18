@@ -3,9 +3,11 @@ use std::{collections::HashMap, sync::LazyLock};
 pub const VAN_DER_WAALS_RADII_RAW: &[u8] =
     include_bytes!("../assets/data/van-der-Waals-radii.toml");
 
+/// Van der Waals radii (Å) by element symbol (source: `assets/data/van-der-Waals-radii.toml`).
 pub struct VanDerWaalsRadii(LazyLock<HashMap<String, f32>>);
 
 impl VanDerWaalsRadii {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(VAN_DER_WAALS_RADII_RAW)
@@ -14,6 +16,8 @@ impl VanDerWaalsRadii {
         }))
     }
 
+    /// The van der Waals radius of the element `atom_type`; 1.0 (and a logged warning) for one
+    /// the table doesn't list.
     pub fn get(&self, atom_type: &str) -> &f32 {
         self.0.get(atom_type).unwrap_or_else(|| {
             log::warn!(
@@ -25,6 +29,7 @@ impl VanDerWaalsRadii {
     }
 }
 
+/// Van der Waals radii by element symbol.
 pub static VAN_DER_WAALS_RADII: VanDerWaalsRadii = VanDerWaalsRadii::load();
 
 #[cfg(test)]
@@ -35,9 +40,11 @@ fn test_van_der_waals_radii() {
 
 pub const COVALENT_RADII_RAW: &[u8] = include_bytes!("../assets/data/covalent-radii.toml");
 
+/// Covalent radii (Å) by element symbol (source: `assets/data/covalent-radii.toml`).
 pub struct CovalentRadii(LazyLock<HashMap<String, f32>>);
 
 impl CovalentRadii {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(COVALENT_RADII_RAW)
@@ -46,6 +53,8 @@ impl CovalentRadii {
         }))
     }
 
+    /// The covalent radius of the element `atom_type`; 1.0 (and a logged warning) for one the
+    /// table doesn't list.
     pub fn get(&self, atom_type: &str) -> &f32 {
         self.0.get(atom_type).unwrap_or_else(|| {
             log::warn!(
@@ -57,6 +66,7 @@ impl CovalentRadii {
     }
 }
 
+/// Covalent radii by element symbol.
 pub static COVALENT_RADII: CovalentRadii = CovalentRadii::load();
 
 #[cfg(test)]
@@ -71,6 +81,7 @@ pub const METALLIC_RADII_RAW: &[u8] = include_bytes!("../assets/data/metallic-ra
 pub struct MetallicRadii(LazyLock<HashMap<String, f32>>);
 
 impl MetallicRadii {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(METALLIC_RADII_RAW)
@@ -86,6 +97,7 @@ impl MetallicRadii {
     }
 }
 
+/// Metallic radii by element symbol.
 pub static METALLIC_RADII: MetallicRadii = MetallicRadii::load();
 
 #[cfg(test)]
@@ -103,6 +115,7 @@ pub const ELECTRONEGATIVITIES_RAW: &[u8] = include_bytes!("../assets/data/electr
 pub struct Electronegativities(LazyLock<HashMap<String, f32>>);
 
 impl Electronegativities {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(ELECTRONEGATIVITIES_RAW)
@@ -118,6 +131,7 @@ impl Electronegativities {
     }
 }
 
+/// Pauling electronegativities by element symbol.
 pub static ELECTRONEGATIVITIES: Electronegativities = Electronegativities::load();
 
 #[cfg(test)]
@@ -135,6 +149,7 @@ pub const OXIDATION_STATES_RAW: &[u8] = include_bytes!("../assets/data/oxidation
 pub struct OxidationStates(LazyLock<HashMap<String, Vec<i8>>>);
 
 impl OxidationStates {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(OXIDATION_STATES_RAW)
@@ -150,6 +165,7 @@ impl OxidationStates {
     }
 }
 
+/// The known oxidation states of each element.
 pub static OXIDATION_STATES: OxidationStates = OxidationStates::load();
 
 pub const IONIC_RADII_RAW: &[u8] = include_bytes!("../assets/data/shannon-radii.csv");
@@ -171,6 +187,7 @@ struct IonicRadius {
 }
 
 impl IonicRadii {
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
             let data = std::str::from_utf8(IONIC_RADII_RAW)
@@ -234,6 +251,7 @@ fn from_roman(numeral: &str) -> Option<u8> {
     u8::try_from(index + 1).ok()
 }
 
+/// Shannon's effective ionic radii.
 pub static IONIC_RADII: IonicRadii = IonicRadii::load();
 
 #[cfg(test)]
@@ -292,6 +310,7 @@ impl BondValence {
     #[cfg(feature = "bvparm2020")]
     const UNSPECIFIED: i8 = 9;
 
+    /// The table, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| BondValenceData {
             elements: Self::read_elements(),
@@ -432,6 +451,7 @@ impl BondValence {
     }
 }
 
+/// Bond valence parameters.
 pub static BOND_VALENCE: BondValence = BondValence::load();
 
 #[cfg(test)]
