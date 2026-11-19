@@ -117,7 +117,10 @@ mod test_parse_adp_type {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Debug, Default, Clone, PartialEq)]
-/// An atom on a site of a phase, as CIF's `_atom_site_*` and `_atom_site_aniso_*` give it.
+/// An atom on a site of a phase, as CIF's `_atom_site_*` and `_atom_site_aniso_*` give it. More
+/// of the `_atom_site` items may join it without a breaking release, so it is built from
+/// [`Atom::default`] outside the crate.
+#[non_exhaustive]
 pub struct Atom {
     /// The site's label (`Ba1`).
     pub label: String,
@@ -134,6 +137,15 @@ pub struct Atom {
     pub occupancy: Measured,
     /// How many positions the site has in the unit cell, where known.
     pub multiplicity: Option<f64>,
+    /// The disorder assembly the site belongs to (`_atom_site_disorder_assembly`, `A`): sites
+    /// with alternative configurations, one of which is present at a time; `None` for a single
+    /// assembly or none.
+    pub disorder_assembly: Option<String>,
+    /// The site's disorder group within its assembly (`_atom_site_disorder_group`, `1`, `-2`):
+    /// the sites of one group are present together, never with those of another group of the
+    /// assembly. A negative group's copies by symmetry are groups of their own (SHELX's negative
+    /// PART). `None` where the site isn't disordered.
+    pub disorder_group: Option<String>,
     /// How the displacement is given.
     pub adp_type: AdpType,
     /// The isotropic displacement, or the equivalent isotropic one of an anisotropic (Å²).

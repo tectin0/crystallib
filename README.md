@@ -12,16 +12,10 @@ Crystal structures and the crystallographic data to work with them:
 ```rust
 use crystallib::{Cell, SpaceGroupSymmetryOperations, IONIC_RADII};
 
-let cell = Cell {
-    a: 4.0.into(),
-    b: 4.0.into(),
-    c: 4.0.into(),
-    alpha: 90.0.into(),
-    beta: 90.0.into(),
-    gamma: 90.0.into(),
-    space_group_number: 221,
-    ..Default::default()
-};
+let mut cell = Cell::default();
+(cell.a, cell.b, cell.c) = (4.0.into(), 4.0.into(), 4.0.into());
+(cell.alpha, cell.beta, cell.gamma) = (90.0.into(), 90.0.into(), 90.0.into());
+cell.space_group_number = 221;
 let positions = SpaceGroupSymmetryOperations::site_positions_in_cell(
     &cell,
     cgmath::Point3::new(0.5, 0.0, 0.0),

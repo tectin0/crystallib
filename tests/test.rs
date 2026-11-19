@@ -32,10 +32,9 @@ fn test() {
 
     let cell: crystallib::Cell = serde_json::from_str(CELL).unwrap();
 
-    let phase = crystallib::Phase {
-        cell,
-        atoms: crystallib::Atoms(vec![atom]),
-    };
+    let mut phase = crystallib::Phase::default();
+    phase.cell = cell;
+    phase.atoms = crystallib::Atoms(vec![atom]);
 
     assert_eq!(phase.atoms[0].label, "Ti1");
     assert_eq!(phase.atoms[0].type_, "Ti");

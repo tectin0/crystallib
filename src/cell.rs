@@ -5,7 +5,9 @@ use crate::Measured;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Default, Debug, Clone, PartialEq)]
-/// A phase's unit cell and space group.
+/// A phase's unit cell and space group. More of what a CIF tells may join it without a breaking
+/// release, so it is built from [`Cell::default`] outside the crate.
+#[non_exhaustive]
 pub struct Cell {
     /// The length of a (Å).
     pub a: Measured,

@@ -3,7 +3,9 @@ use crate::{atoms::Atoms, cell::Cell};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Default, Debug, Clone, PartialEq)]
-/// A crystalline phase: its unit cell and the atoms on its sites.
+/// A crystalline phase: its unit cell and the atoms on its sites. More of what a CIF tells may
+/// join it without a breaking release, so it is built from [`Phase::default`] outside the crate.
+#[non_exhaustive]
 pub struct Phase {
     /// The unit cell and space group.
     pub cell: Cell,
