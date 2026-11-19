@@ -1,6 +1,6 @@
 [package]
 name = "crystallib"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "Crystal structures (cell, atoms, values with standard uncertainties), space group symmetry and element data (radii, electronegativities, oxidation states, bond valence parameters)"
 license = "GPL-3.0-only AND MIT"
