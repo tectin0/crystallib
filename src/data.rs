@@ -111,28 +111,46 @@ fn test_metallic_radii() {
 
 pub const ELECTRONEGATIVITIES_RAW: &[u8] = include_bytes!("../assets/data/electronegativity.toml");
 
-/// Pauling electronegativities by element symbol.
+pub const ALLEN_ELECTRONEGATIVITIES_RAW: &[u8] =
+    include_bytes!("../assets/data/electronegativity-allen.toml");
+
+/// Electronegativities on one scale, by element symbol.
 pub struct Electronegativities(LazyLock<HashMap<String, f32>>);
 
 impl Electronegativities {
-    /// The table, read from the data crystallib embeds the first time it is used.
+    /// Pauling's scale, read from the data crystallib embeds the first time it is used.
     pub const fn load() -> Self {
         Self(LazyLock::new(|| {
-            let data = std::str::from_utf8(ELECTRONEGATIVITIES_RAW)
-                .expect("Failed to convert electronegativity data to str");
-            toml::from_str(data).expect("Failed to parse electronegativity data from toml")
+            parse_electronegativities(ELECTRONEGATIVITIES_RAW)
         }))
     }
 
-    /// The Pauling electronegativity of the element `symbol`, or `None` for one the scale gives
-    /// none (He, Ne, Ar) or an unknown symbol.
+    /// Allen's scale (the average energy of a free atom's valence electrons, scaled to Pauling's),
+    /// read from the data crystallib embeds the first time it is used.
+    pub const fn load_allen() -> Self {
+        Self(LazyLock::new(|| {
+            parse_electronegativities(ALLEN_ELECTRONEGATIVITIES_RAW)
+        }))
+    }
+
+    /// The electronegativity of the element `symbol`, or `None` for one the scale gives none
+    /// (Pauling's: He, Ne, Ar; Allen's: the lanthanides and the elements past Rn) or an unknown
+    /// symbol.
     pub fn get(&self, symbol: &str) -> Option<f32> {
         self.0.get(symbol).copied()
     }
 }
 
+fn parse_electronegativities(raw: &[u8]) -> HashMap<String, f32> {
+    let data = std::str::from_utf8(raw).expect("Failed to convert electronegativity data to str");
+    toml::from_str(data).expect("Failed to parse electronegativity data from toml")
+}
+
 /// Pauling electronegativities by element symbol.
 pub static ELECTRONEGATIVITIES: Electronegativities = Electronegativities::load();
+
+/// Allen electronegativities by element symbol.
+pub static ALLEN_ELECTRONEGATIVITIES: Electronegativities = Electronegativities::load_allen();
 
 #[cfg(test)]
 #[test]
@@ -141,6 +159,11 @@ fn test_electronegativities() {
     assert_eq!(ELECTRONEGATIVITIES.get("Na"), Some(0.93));
     assert_eq!(ELECTRONEGATIVITIES.get("He"), None);
     assert_eq!(ELECTRONEGATIVITIES.get("Xx"), None);
+
+    assert_eq!(ALLEN_ELECTRONEGATIVITIES.get("F"), Some(4.193));
+    assert_eq!(ALLEN_ELECTRONEGATIVITIES.get("Ti"), Some(1.38));
+    assert_eq!(ALLEN_ELECTRONEGATIVITIES.get("He"), Some(4.16));
+    assert_eq!(ALLEN_ELECTRONEGATIVITIES.get("La"), None);
 }
 
 pub const OXIDATION_STATES_RAW: &[u8] = include_bytes!("../assets/data/oxidation-states.toml");

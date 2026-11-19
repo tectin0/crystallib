@@ -1,12 +1,18 @@
 [package]
 name = "crystallib"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Crystal structures (cell, atoms, values with standard uncertainties), space group symmetry and element data (radii, electronegativities, oxidation states, bond valence parameters)"
 license = "GPL-3.0-only AND MIT"
 repository = "https://github.com/tectin0/crystallib"
 readme = "README.md"
-keywords = ["crystallography", "crystal", "space-group", "symmetry", "chemistry"]
+keywords = [
+    "crystallography",
+    "crystal",
+    "space-group",
+    "symmetry",
+    "chemistry",
+]
 categories = ["science"]
 
 [package.metadata.docs.rs]

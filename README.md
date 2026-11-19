@@ -6,7 +6,7 @@ Crystal structures and the crystallographic data to work with them:
   (`Phase`, `Cell`, `Atom`, `Measured`);
 - the symmetry operations and generators of the 230 space groups, symbols and numbers, and the
   positions a site takes in the unit cell (feature `symmetry`);
-- element data: van der Waals, covalent, metallic and Shannon's ionic radii, Pauling
+- element data: van der Waals, covalent, metallic and Shannon's ionic radii, Pauling and Allen
   electronegativities, oxidation states and bond valence parameters (feature `data`).
 
 ```rust
@@ -56,6 +56,8 @@ data in `assets/` comes from the sources each file names in its header:
 - `data/electronegativity.toml`, `data/metallic-radii.toml`, `data/oxidation-states.toml`,
   `data/bond-valence-1991.toml`: the cited sources, as collected in pymatgen.
 - `data/covalent-radii.toml`, `data/van-der-Waals-radii.toml`: the cited publications.
+- `data/electronegativity-allen.toml`: the cited publications (Allen; Mann, Meek, Allen et al.), as
+  tabulated on Wikipedia.
 
 pymatgen is licensed under the MIT license; its text is in `data/shannon-radii-NOTICE.md`.
 
