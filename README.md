@@ -46,8 +46,10 @@ None is on by default.
 
 ## Data and licenses
 
-crystallib's code is licensed under the GNU General Public License v3.0 only (`LICENSE`). The
-data in `assets/` comes from the sources each file names in its header:
+crystallib's code is licensed under the GNU General Public License v3.0 only (`LICENSE`), with
+an additional permission to combine it with code under the GSAS-II Open Source License or terms
+derived from it (`LICENSE-ADDITIONAL-PERMISSION`). The data in `assets/` comes from the sources
+each file names in its header:
 
 - `spacegroup_symmetry_operations.json`, `spacegroup_generators.json`, `spacegroup_symbols.json`:
   generated from [pymatgen](https://github.com/materialsproject/pymatgen) by
