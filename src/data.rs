@@ -372,7 +372,16 @@ impl BondValence {
             }
 
             let fields: Vec<&str> = line.split_whitespace().collect();
-            let [cation, state, anion, anion_state, r0, b, _reference, details @ ..] = &fields[..]
+            let [
+                cation,
+                state,
+                anion,
+                anion_state,
+                r0,
+                b,
+                _reference,
+                details @ ..,
+            ] = &fields[..]
             else {
                 continue;
             };

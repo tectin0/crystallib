@@ -426,7 +426,9 @@ macro_rules! impl_into_space_group_number {
     };
 }
 
-impl_into_space_group_number!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
+impl_into_space_group_number!(
+    usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128
+);
 
 /// Maps a space-group number (1–230) to a Laue class label and optional unique-axis label.
 ///
@@ -541,7 +543,9 @@ macro_rules! impl_into_space_group_symbol {
     };
 }
 
-impl_into_space_group_symbol!(usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128);
+impl_into_space_group_symbol!(
+    usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128
+);
 
 #[cfg(test)]
 mod test_space_group_numbers {

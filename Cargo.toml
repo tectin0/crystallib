@@ -1,9 +1,9 @@
 [package]
 name = "crystallib"
-version = "0.3.0"
-edition = "2021"
+version = "0.4.0"
+edition = "2024"
 description = "Crystal structures (cell, atoms, values with standard uncertainties), space group symmetry and element data (radii, electronegativities, oxidation states, bond valence parameters)"
-license = "GPL-3.0-only AND MIT"
+license = "GPL-3.0-only AND MIT AND CC-BY-4.0"
 repository = "https://github.com/tectin0/crystallib"
 readme = "README.md"
 keywords = [
@@ -16,10 +16,19 @@ keywords = [
 categories = ["science"]
 
 [package.metadata.docs.rs]
-features = ["data", "serde", "symmetry", "get-size"]
+features = [
+    "data",
+    "serde",
+    "symmetry",
+    "get-size",
+    "cif",
+    "distance-distributions",
+]
 
 [dependencies]
 cgmath = "0.18"
+cif = { version = "0.4", optional = true }
+miniz_oxide = { version = "0.8", optional = true }
 log = { version = "0.4", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
@@ -35,8 +44,20 @@ bvparm2020 = ["data"]
 serde = ["dep:serde"]
 symmetry = ["dep:serde", "dep:serde_json", "dep:log", "cgmath/serde"]
 get-size = ["dep:get-size2"]
+# Reading a phase out of a CIF (cif_phase), with the `cif` crate.
+cif = ["dep:cif", "symmetry"]
+# How long bonds and distances typically are (distances): about 1 MB derived from the Materials
+# Project, CC BY 4.0, see assets/distances/NOTICE.md.
+distance-distributions = ["dep:miniz_oxide", "data", "symmetry"]
 
 [dev-dependencies]
+flate2 = "1"
 gnuplot = "0.0.44"
 serde_json = "1.0"
-crystallib = { path = ".", features = ["serde", "symmetry", "data"] }
+crystallib = { path = ".", features = [
+    "serde",
+    "symmetry",
+    "data",
+    "cif",
+    "distance-distributions",
+] }

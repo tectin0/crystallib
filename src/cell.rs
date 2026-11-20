@@ -1,4 +1,4 @@
-use cgmath::{vec3, vec4, Matrix3, Matrix4, Vector3, Vector4};
+use cgmath::{Matrix3, Matrix4, Vector3, Vector4, vec3, vec4};
 
 use crate::Measured;
 
