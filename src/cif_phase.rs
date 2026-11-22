@@ -73,14 +73,34 @@ fn cell_of(block: &DataBlock) -> Result<Cell, String> {
         (None, None) => return Err("no space group symbol or number".to_string()),
     };
 
+    let (a, b, c) = (
+        number("_cell_length_a")?,
+        number("_cell_length_b")?,
+        number("_cell_length_c")?,
+    );
+
+    let (alpha, beta, gamma) = (
+        number("_cell_angle_alpha")?,
+        number("_cell_angle_beta")?,
+        number("_cell_angle_gamma")?,
+    );
+
+    let volume = number("_cell_volume").unwrap_or_else(|_| {
+        let [cos_alpha, cos_beta, cos_gamma] =
+            [alpha, beta, gamma].map(|angle| angle.value.to_radians().cos());
+        let square = 1.0 - cos_alpha.powi(2) - cos_beta.powi(2) - cos_gamma.powi(2)
+            + 2.0 * cos_alpha * cos_beta * cos_gamma;
+        Measured::new(a.value * b.value * c.value * square.max(0.0).sqrt())
+    });
+
     Ok(Cell {
-        a: number("_cell_length_a")?,
-        b: number("_cell_length_b")?,
-        c: number("_cell_length_c")?,
-        alpha: number("_cell_angle_alpha")?,
-        beta: number("_cell_angle_beta")?,
-        gamma: number("_cell_angle_gamma")?,
-        volume: number("_cell_volume")?,
+        a,
+        b,
+        c,
+        alpha,
+        beta,
+        gamma,
+        volume,
         space_group,
         space_group_number,
         symmetry_operations: symmetry_operations(block),
@@ -295,6 +315,35 @@ _cell_volume 64
         try_phase_from_cif_bytes(text.as_bytes())
             .expect("the CIF describes a phase")
             .1
+    }
+
+    #[test]
+    fn a_cell_without_its_volume_gets_it_from_its_parameters() {
+        let phase = phase(
+            "data_test
+_cell_length_a 9.617(1)
+_cell_length_b 11.345(1)
+_cell_length_c 15.090(2)
+_cell_angle_alpha 97.07(1)
+_cell_angle_beta 108.05(1)
+_cell_angle_gamma 107.29(1)
+_symmetry_space_group_name_H-M 'P 21 21 21'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1 0 0 0
+",
+        );
+
+        assert_eq!(phase.cell.space_group_number, 19);
+        // a · (b × c) of the cell's Cartesian axes.
+        let [a, b, c] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+            .map(|axis| phase.cell.cartesian(axis.into()).cast::<f64>().unwrap());
+        let triple_product = cgmath::dot(a, b.cross(c));
+        assert!((phase.cell.volume.value - triple_product).abs() < 0.01);
+        assert!((phase.cell.volume.value - 1452.04).abs() < 0.01);
     }
 
     #[test]

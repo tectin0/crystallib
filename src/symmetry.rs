@@ -401,7 +401,9 @@ impl SpaceGroupSymmetryOperations {
 /// A space group given by its number or its symbol.
 pub trait IntoSpaceGroupNumber {
     /// The space group's number (1–230), or `None` for a number out of range or a symbol no
-    /// space group has (see [`SPACEGROUP_NUMBERS`]; spaces in a symbol are ignored).
+    /// space group has (see [`SPACEGROUP_NUMBERS`]). Spaces in a symbol are ignored, a screw
+    /// axis between them may be written as CIFs write it (`P 21 21 21`, `P 1 21/c 1`), and a
+    /// setting's suffix (`R -3 m :H`, `F d -3 m :2`) is ignored.
     fn into_space_group_number(&self) -> Option<u8>;
 }
 
@@ -499,17 +501,29 @@ pub fn lattice_component_index(parameter_name: &str) -> Option<u8> {
 
 impl IntoSpaceGroupNumber for String {
     fn into_space_group_number(&self) -> Option<u8> {
-        let split = self.split_whitespace();
-        let number_of_splits = split.clone().count();
+        let symbol = self.split(':').next().unwrap_or_default();
+        let compact: String = symbol
+            .split_whitespace()
+            .map(screw_axis_as_in_the_table)
+            .collect();
 
-        let space_group = match number_of_splits {
-            0 => None,
-            _ => Some(split.collect::<Vec<_>>().join("")),
-        };
+        SPACEGROUP_NUMBERS.get(&compact).copied()
+    }
+}
 
-        let space_group = space_group.as_ref().unwrap_or(self);
+/// One space-separated part of a space group symbol as [`SPACEGROUP_SYMBOLS`] writes it: a screw
+/// axis written as two digits (`21`, `21/c`, `63/m`) gets a `_` between them (`2_1/c`).
+fn screw_axis_as_in_the_table(part: &str) -> std::borrow::Cow<'_, str> {
+    let bytes = part.as_bytes();
+    let screw = bytes.len() >= 2
+        && matches!(bytes[0], b'2' | b'3' | b'4' | b'6')
+        && (b'1'..bytes[0]).contains(&bytes[1])
+        && bytes.get(2).is_none_or(|&next| next == b'/');
 
-        SPACEGROUP_NUMBERS.get(space_group).copied()
+    if screw {
+        format!("{}_{}", &part[..1], &part[1..]).into()
+    } else {
+        part.into()
     }
 }
 
@@ -558,6 +572,26 @@ mod test_space_group_numbers {
         assert_eq!(300u16.into_space_group_number(), None);
         assert_eq!((-31i32).into_space_group_number(), None);
         assert_eq!("F m -3 m".into_space_group_number(), Some(225));
+    }
+
+    #[test]
+    fn a_symbol_may_write_screw_axes_and_settings_as_cifs_do() {
+        for (symbol, number) in [
+            ("P 21 21 21", 19),
+            ("P2_12_12_1", 19),
+            ("P 1 21/c 1", 14),
+            ("P 2 2 2", 16),
+            ("P 4 2 2", 89),
+            ("P 42 2 2", 93),
+            ("P 41", 76),
+            ("P 61", 169),
+            ("P 63/m m c", 194),
+            ("R -3 m :H", 166),
+            ("R -3 m:R", 166),
+        ] {
+            assert_eq!(symbol.into_space_group_number(), Some(number), "{symbol}");
+        }
+        assert_eq!("".into_space_group_number(), None);
     }
 }
 
