@@ -28,8 +28,9 @@ pub struct Cell {
     /// The space group's number (1–230); 0 where unknown.
     pub space_group_number: u8,
     /// The symmetry operations as the CIF writes them (`-x+y, -x, z+1/3`). They fix the setting
-    /// the atoms' coordinates are given in (origin choice, axes); empty for the standard setting
-    /// of `space_group_number`.
+    /// the atoms' coordinates are given in (origin choice, axes); empty for the setting
+    /// `space_group` names (see `SpaceGroupSetting::of_cell`), or the standard setting of
+    /// `space_group_number` where it names none.
     pub symmetry_operations: Vec<String>,
 }
 

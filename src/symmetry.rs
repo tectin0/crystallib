@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::LazyLock,
+};
 
 use cgmath::Transform;
 
@@ -161,11 +164,301 @@ fn parse_symmetry_component(expression: &str) -> Option<([f64; 3], f64)> {
     Some((coefficients, constant))
 }
 
-const SPACEGROUP_SYMMETRY_OPERATIONS_RAW: &str =
-    include_str!("../assets/spacegroup_symmetry_operations.json");
+const SPACEGROUP_SETTINGS_RAW: &str = include_str!("../assets/spacegroup_settings.tsv");
 
+/// One of the 530 settings of the space groups (one per Hall symbol): the axes and origin a
+/// structure's coordinates are given in.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpaceGroupSetting {
+    /// The space group's number (1–230).
+    pub number: u8,
+    /// Which of its group's settings this is, as spglib names it: the origin choice (`1`, `2`),
+    /// hexagonal or rhombohedral axes (`H`, `R`), a monoclinic group's unique axis and cell
+    /// choice (`b1`, `-c2`), an orthorhombic group's axes (`cab`, `2ba-c`); empty for a group's
+    /// only setting.
+    pub choice: &'static str,
+    /// The short Hermann–Mauguin symbol, without spaces (`P2_1/c`, `Pbnm`).
+    pub short_symbol: &'static str,
+    /// The full Hermann–Mauguin symbol (`P 1 2_1/c 1`).
+    pub full_symbol: &'static str,
+    /// The Hall symbol (`-P 2ybc`).
+    pub hall_symbol: &'static str,
+    /// The symmetry operations, centring included, as matrices that transform fractional
+    /// coordinates.
+    pub operations: Vec<cgmath::Matrix4<f64>>,
+}
+
+/// The settings of the space groups, from spglib's database (BSD-3-Clause, see
+/// `assets/spacegroup_settings-NOTICE.md`), in its order: by number, a group's origin choice 1
+/// before 2 and hexagonal axes before rhombohedral (see [`SpaceGroupSetting::standard`]).
+pub static SPACEGROUP_SETTINGS: LazyLock<Vec<SpaceGroupSetting>> = LazyLock::new(|| {
+    SPACEGROUP_SETTINGS_RAW
+        .lines()
+        .map(|line| {
+            let fields: Vec<&'static str> = line.split('\t').collect();
+            let [
+                number,
+                choice,
+                short_symbol,
+                full_symbol,
+                hall_symbol,
+                operations,
+            ] = fields[..]
+            else {
+                panic!("a space group setting has six fields: {line}");
+            };
+
+            SpaceGroupSetting {
+                number: number.parse().expect("a space group setting's number"),
+                choice,
+                short_symbol,
+                full_symbol,
+                hall_symbol,
+                operations: operations
+                    .split(';')
+                    .map(|operation| {
+                        parse_symmetry_operation(operation)
+                            .unwrap_or_else(|| panic!("`{operation}` of {hall_symbol} reads"))
+                    })
+                    .collect(),
+            }
+        })
+        .collect()
+});
+
+/// The settings each name of a setting names. A setting's names are its short and full symbol
+/// (see [`compact_symbol`]); for a monoclinic group (numbers 3–15), its full symbol without its
+/// `1`s, the short symbol of each of its settings (spglib's short symbol is the standard
+/// setting's for all of them: `P2_1/c` for `P 1 2_1/n 1`); and for a group with an e-glide
+/// (numbers 39, 41, 64, 67 and 68), the older symbols that write each `e` as either of the two
+/// glides it combines (`Cmca` and `Cmcb` for `Cmce`). No name names settings of two groups (a
+/// test checks it).
+static SETTINGS_BY_NAME: LazyLock<HashMap<String, Vec<&'static SpaceGroupSetting>>> =
+    LazyLock::new(|| {
+        let mut by_name: HashMap<String, Vec<&'static SpaceGroupSetting>> = HashMap::new();
+
+        for setting in SPACEGROUP_SETTINGS.iter() {
+            let mut names = vec![
+                compact_symbol(setting.short_symbol),
+                compact_symbol(setting.full_symbol),
+            ];
+            if (3..=15).contains(&setting.number) {
+                let without_ones = setting
+                    .full_symbol
+                    .split_whitespace()
+                    .filter(|&part| part != "1");
+                names.push(compact_symbol(&without_ones.collect::<Vec<_>>().join(" ")));
+            }
+            names.extend(
+                older_e_glide_symbols(setting.full_symbol)
+                    .iter()
+                    .map(|symbol| compact_symbol(symbol)),
+            );
+            names.sort();
+            names.dedup();
+
+            for name in names {
+                by_name.entry(name).or_default().push(setting);
+            }
+        }
+
+        by_name
+    });
+
+/// The full and short symbols an orthorhombic group's setting with an e-glide had before the
+/// e-glide symbol was introduced: each `e` (in the part for the axis its plane is perpendicular
+/// to) as either glide along the other two axes; the short symbol is each axis's part after its
+/// `/`. None for a symbol without an `e`.
+fn older_e_glide_symbols(full_symbol: &str) -> Vec<String> {
+    let parts: Vec<&str> = full_symbol.split_whitespace().collect();
+    let [lattice, axes @ ..] = &parts[..] else {
+        return Vec::new();
+    };
+    if axes.len() != 3 || !axes.iter().any(|part| part.contains('e')) {
+        return Vec::new();
+    }
+
+    let mut older: Vec<Vec<String>> = vec![Vec::new()];
+    for (axis, part) in axes.iter().enumerate() {
+        let ways: Vec<String> = match part.contains('e') {
+            true => ["a", "b", "c"]
+                .iter()
+                .enumerate()
+                .filter(|(other, _)| *other != axis)
+                .map(|(_, glide)| part.replace('e', glide))
+                .collect(),
+            false => vec![part.to_string()],
+        };
+        older = older
+            .iter()
+            .flat_map(|written| {
+                ways.iter()
+                    .map(|way| [written.clone(), vec![way.clone()]].concat())
+            })
+            .collect();
+    }
+
+    older
+        .iter()
+        .flat_map(|axes| {
+            let short: String = axes
+                .iter()
+                .map(|part| part.rsplit('/').next().unwrap_or(part))
+                .collect();
+            [
+                format!("{lattice} {}", axes.join(" ")),
+                format!("{lattice}{short}"),
+            ]
+        })
+        .collect()
+}
+
+impl SpaceGroupSetting {
+    /// The setting the Hermann–Mauguin symbol `symbol` names, or `None` for a symbol no setting
+    /// has. Spaces are ignored, screw axes may be written as CIFs write them (`P 1 21/n 1`,
+    /// `P63/mmc`), the glides of an e-glide group as they were written before (`C m c a`), and
+    /// a cubic group's `-3` as it was written before (`F m 3 m`). A suffix chooses among the
+    /// settings a symbol names (`:1`, `:2`, `:H`, `:R`, `:b1`; for an orthorhombic group with
+    /// two origins and other axes, `:2` is origin choice 2 in those axes), and a symbol whose
+    /// suffix names none of them names none. Without a suffix, a symbol names the first of them,
+    /// except origin choice 2 of a group with two origins.
+    pub fn named(symbol: &str) -> Option<&'static SpaceGroupSetting> {
+        let (name, suffix) = match symbol.split_once(':') {
+            Some((name, suffix)) => (name, suffix.trim()),
+            None => (symbol, ""),
+        };
+        let settings = settings_named(name);
+
+        if suffix.is_empty() {
+            return preferred(settings);
+        }
+
+        settings.iter().copied().find(|setting| {
+            setting.choice.eq_ignore_ascii_case(suffix)
+                || matches!(suffix, "1" | "2") && setting.choice.starts_with(suffix)
+        })
+    }
+
+    /// The standard setting of the space group numbered `number`, or `None` for a number out
+    /// of 1–230: its first, except origin choice 2 of a group with two origins (as the Bilbao
+    /// Crystallographic Server's standard), the setting its symbol names without a suffix (see
+    /// [`Self::named`]).
+    pub fn standard(number: u8) -> Option<&'static SpaceGroupSetting> {
+        let settings: Vec<_> = SPACEGROUP_SETTINGS
+            .iter()
+            .filter(|setting| setting.number == number)
+            .collect();
+        preferred(&settings)
+    }
+
+    /// The setting `cell`'s coordinates are given in when it lists no symmetry operations: the
+    /// one its symbol names (see [`Self::named`]), on rhombohedral axes where that names
+    /// hexagonal ones but the cell's angles aren't those of hexagonal axes (α = β = 90°,
+    /// γ = 120°). `None` where its symbol names no setting, or one of another group than its
+    /// number (with a number of 0, any group).
+    pub fn of_cell(cell: &Cell) -> Option<&'static SpaceGroupSetting> {
+        let setting = Self::named(&cell.space_group)?;
+
+        if cell.space_group_number != 0 && setting.number != cell.space_group_number {
+            log::debug!(
+                "Space group symbol {} names group {}, its number is {}",
+                cell.space_group,
+                setting.number,
+                cell.space_group_number
+            );
+            return None;
+        }
+
+        const ANGLE_TOLERANCE: f64 = 0.1;
+        let hexagonal_axes = (cell.alpha.value - 90.0).abs() < ANGLE_TOLERANCE
+            && (cell.beta.value - 90.0).abs() < ANGLE_TOLERANCE
+            && (cell.gamma.value - 120.0).abs() < ANGLE_TOLERANCE;
+        if setting.choice == "H" && !hexagonal_axes {
+            return SPACEGROUP_SETTINGS
+                .iter()
+                .find(|other| other.number == setting.number && other.choice == "R");
+        }
+
+        Some(setting)
+    }
+}
+
+/// Of `settings` (one group's, in [`SPACEGROUP_SETTINGS`]' order), the one a symbol without a
+/// suffix names: the first, except origin choice 2 where they hold both origin choices. CIFs that
+/// write such a symbol without a suffix are in origin choice 2 (640 of the 668 COD CIFs that also
+/// list their operations, 24 of the 28 without them that give a Hall symbol).
+fn preferred(settings: &[&'static SpaceGroupSetting]) -> Option<&'static SpaceGroupSetting> {
+    let has_origin_choice_1 = settings.iter().any(|s| s.choice.starts_with('1'));
+    let origin_choice_2 = settings.iter().find(|s| s.choice.starts_with('2'));
+
+    match origin_choice_2 {
+        Some(setting) if has_origin_choice_1 => Some(setting),
+        _ => settings.first().copied(),
+    }
+}
+
+/// The settings `name` (a Hermann–Mauguin symbol without a suffix) names, in
+/// [`SPACEGROUP_SETTINGS`]' order; none for a name no setting has.
+fn settings_named(name: &str) -> &'static [&'static SpaceGroupSetting] {
+    let compact = compact_symbol(name);
+    if let Some(settings) = SETTINGS_BY_NAME.get(&compact) {
+        return settings;
+    }
+
+    SETTINGS_BY_NAME
+        .get(&with_older_cubic_threes(&compact))
+        .filter(|settings| settings.iter().all(|setting| setting.number >= 195))
+        .map_or(&[], Vec::as_slice)
+}
+
+/// `symbol` as names are kept: without spaces, its screw axes with `_` (see
+/// [`screw_axes_as_in_the_table`]), its lattice letter upper case and the rest lower case.
+fn compact_symbol(symbol: &str) -> String {
+    let compact: String = symbol
+        .split_whitespace()
+        .map(screw_axes_as_in_the_table)
+        .collect();
+    let mut chars = compact.chars();
+
+    match chars.next() {
+        Some(first) => first
+            .to_uppercase()
+            .chain(chars.flat_map(char::to_lowercase))
+            .collect(),
+        None => String::new(),
+    }
+}
+
+/// `compact` (see [`compact_symbol`]) with each `3` after a mirror or glide written `-3`: older
+/// cubic symbols write `Fm3m` for `Fm-3m`, `Pa3` for `Pa-3`.
+fn with_older_cubic_threes(compact: &str) -> String {
+    let mut written = String::with_capacity(compact.len() + 2);
+    let mut previous = None;
+
+    for c in compact.chars() {
+        if c == '3' && matches!(previous, Some('m' | 'n' | 'a' | 'd')) {
+            written.push('-');
+        }
+        written.push(c);
+        previous = Some(c);
+    }
+
+    written
+}
+
+/// The symmetry operations of each space group's standard setting (see
+/// [`SpaceGroupSetting::standard`]), by number.
 pub static SPACEGROUP_SYMMETRY_OPERATIONS: LazyLock<BTreeMap<u8, Vec<cgmath::Matrix4<f64>>>> =
-    LazyLock::new(|| serde_json::from_str(SPACEGROUP_SYMMETRY_OPERATIONS_RAW).unwrap());
+    LazyLock::new(|| {
+        (1..=230)
+            .filter_map(|number| {
+                Some((
+                    number,
+                    SpaceGroupSetting::standard(number)?.operations.clone(),
+                ))
+            })
+            .collect()
+    });
 
 const SPACEGROUP_SYMBOLS_RAW: &str = include_str!("../assets/spacegroup_symbols.json");
 
@@ -194,8 +487,9 @@ const SPACEGROUP_GENERATORS_RAW: &str = include_str!("../assets/spacegroup_gener
 pub static SPACEGROUP_GENERATORS: LazyLock<BTreeMap<u8, Vec<cgmath::Matrix4<f64>>>> =
     LazyLock::new(|| serde_json::from_str(SPACEGROUP_GENERATORS_RAW).unwrap());
 
-/// The generators of the space groups in their standard settings, as matrices that transform
-/// fractional coordinates.
+/// The generators of the space groups as pymatgen gives them, as matrices that transform
+/// fractional coordinates: in their standard settings (see [`SpaceGroupSetting::standard`]),
+/// except that a group with two origins is in origin choice 1.
 pub struct SpaceGroupGenerators {}
 
 impl SpaceGroupGenerators {
@@ -270,8 +564,8 @@ impl SpaceGroupGenerators {
     }
 }
 
-/// The symmetry operations of the space groups in their standard settings, as matrices that
-/// transform fractional coordinates.
+/// The symmetry operations of the space groups in their standard settings (see
+/// [`SpaceGroupSetting::standard`]), as matrices that transform fractional coordinates.
 pub struct SpaceGroupSymmetryOperations {}
 
 impl SpaceGroupSymmetryOperations {
@@ -290,8 +584,9 @@ impl SpaceGroupSymmetryOperations {
     }
 
     /// The symmetry operations of `cell`: the ones it states (see [`Cell::symmetry_operations`])
-    /// if it states any and all of them read, else those of its space group number in the
-    /// standard setting.
+    /// if it states any and all of them read, else those of the setting its symbol names (see
+    /// [`SpaceGroupSetting::of_cell`]), else those of its space group number in the standard
+    /// setting.
     pub fn of_cell(cell: &Cell) -> Option<Vec<cgmath::Matrix4<f64>>> {
         if !cell.symmetry_operations.is_empty() {
             let stated: Option<Vec<_>> = cell
@@ -302,14 +597,17 @@ impl SpaceGroupSymmetryOperations {
             match stated {
                 Some(operations) => return Some(operations),
                 None => log::warn!(
-                    "A symmetry operation of space group {} doesn't read; using the standard \
-                     setting of its number",
+                    "A symmetry operation of space group {} doesn't read; using the setting its \
+                     symbol or number names",
                     cell.space_group
                 ),
             }
         }
 
-        Self::get(cell.space_group_number).cloned()
+        match SpaceGroupSetting::of_cell(cell) {
+            Some(setting) => Some(setting.operations.clone()),
+            None => Self::get(cell.space_group_number).cloned(),
+        }
     }
 
     /// The positions in the unit cell `[0, 1]` equivalent to `point` (fractional) under the
@@ -401,9 +699,9 @@ impl SpaceGroupSymmetryOperations {
 /// A space group given by its number or its symbol.
 pub trait IntoSpaceGroupNumber {
     /// The space group's number (1–230), or `None` for a number out of range or a symbol no
-    /// space group has (see [`SPACEGROUP_NUMBERS`]). Spaces in a symbol are ignored, a screw
-    /// axis between them may be written as CIFs write it (`P 21 21 21`, `P 1 21/c 1`), and a
-    /// setting's suffix (`R -3 m :H`, `F d -3 m :2`) is ignored.
+    /// space group has: a symbol of [`SPACEGROUP_NUMBERS`] or of any setting (see
+    /// [`SpaceGroupSetting::named`]: `P 21 21 21`, `P 1 21/n 1`, `C m c a`), its suffix
+    /// (`R -3 m :H`, `F d -3 m :2`) ignored.
     fn into_space_group_number(&self) -> Option<u8>;
 }
 
@@ -501,30 +799,42 @@ pub fn lattice_component_index(parameter_name: &str) -> Option<u8> {
 
 impl IntoSpaceGroupNumber for String {
     fn into_space_group_number(&self) -> Option<u8> {
-        let symbol = self.split(':').next().unwrap_or_default();
-        let compact: String = symbol
-            .split_whitespace()
-            .map(screw_axis_as_in_the_table)
-            .collect();
+        let name = self.split(':').next().unwrap_or_default();
 
-        SPACEGROUP_NUMBERS.get(&compact).copied()
+        SPACEGROUP_NUMBERS
+            .get(&compact_symbol(name))
+            .copied()
+            .or_else(|| Some(settings_named(name).first()?.number))
     }
 }
 
-/// One space-separated part of a space group symbol as [`SPACEGROUP_SYMBOLS`] writes it: a screw
-/// axis written as two digits (`21`, `21/c`, `63/m`) gets a `_` between them (`2_1/c`).
-fn screw_axis_as_in_the_table(part: &str) -> std::borrow::Cow<'_, str> {
+/// One space-separated part of a space group symbol with its screw axes as
+/// [`SPACEGROUP_SYMBOLS`] writes them, `_` between their two digits (`2_1/c`): two digits that
+/// are the whole part (`21`, `42`) or come before a `/` (`21/c`, `P63/mmc`). Elsewhere two digits
+/// may be two axes (`P321`), so they are kept.
+fn screw_axes_as_in_the_table(part: &str) -> std::borrow::Cow<'_, str> {
     let bytes = part.as_bytes();
-    let screw = bytes.len() >= 2
-        && matches!(bytes[0], b'2' | b'3' | b'4' | b'6')
-        && (b'1'..bytes[0]).contains(&bytes[1])
-        && bytes.get(2).is_none_or(|&next| next == b'/');
+    let screw_at = |i: usize| {
+        matches!(bytes[i], b'2' | b'3' | b'4' | b'6')
+            && bytes
+                .get(i + 1)
+                .is_some_and(|&next| (b'1'..bytes[i]).contains(&next))
+            && (i == 0 || !bytes[i - 1].is_ascii_digit())
+            && (bytes.len() == 2 || bytes.get(i + 2) == Some(&b'/'))
+    };
 
-    if screw {
-        format!("{}_{}", &part[..1], &part[1..]).into()
-    } else {
-        part.into()
+    if !(0..bytes.len()).any(screw_at) {
+        return part.into();
     }
+
+    let mut written = String::with_capacity(part.len() + 2);
+    for (i, c) in part.char_indices() {
+        written.push(c);
+        if screw_at(i) {
+            written.push('_');
+        }
+    }
+    written.into()
 }
 
 impl IntoSpaceGroupNumber for &str {
@@ -588,10 +898,162 @@ mod test_space_group_numbers {
             ("P 63/m m c", 194),
             ("R -3 m :H", 166),
             ("R -3 m:R", 166),
+            ("P 1 21/n 1", 14),
+            ("P 21/n", 14),
+            ("P21/c", 14),
+            ("P63/mmc", 194),
+            ("P321", 150),
+            ("P 21 c n", 33),
+            ("C m c a", 64),
+            ("A b a 2", 41),
+            ("F m 3 m", 225),
+            ("Fd3m", 227),
+            ("p b n m", 62),
         ] {
             assert_eq!(symbol.into_space_group_number(), Some(number), "{symbol}");
         }
-        assert_eq!("".into_space_group_number(), None);
+        for symbol in ["", "X4bm", "?P?", "P 4 3", "Pmn2"] {
+            assert_eq!(symbol.into_space_group_number(), None, "{symbol}");
+        }
+    }
+
+    #[test]
+    fn every_tabulated_symbol_names_its_number() {
+        for (number, symbol) in super::SPACEGROUP_SYMBOLS.iter() {
+            assert_eq!(symbol.into_space_group_number(), Some(*number), "{symbol}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_space_group_settings {
+    use std::collections::BTreeSet;
+
+    use super::{
+        SETTINGS_BY_NAME, SPACEGROUP_SETTINGS, SPACEGROUP_SYMMETRY_OPERATIONS, SpaceGroupSetting,
+        SpaceGroupSymmetryOperations, parse_symmetry_operation,
+    };
+    use crate::{Cell, Measured};
+
+    /// An operation's rotation and its translation in twelfths, modulo 1.
+    fn key(operation: &cgmath::Matrix4<f64>) -> [i64; 12] {
+        let mut key = [0; 12];
+        for row in 0..3 {
+            for column in 0..3 {
+                key[3 * row + column] = operation[column][row].round() as i64;
+            }
+            key[9 + row] = (operation[3][row] * 12.0).round() as i64 % 12;
+            key[9 + row] = (key[9 + row] + 12) % 12;
+        }
+        key
+    }
+
+    #[test]
+    fn every_setting_is_a_group_and_each_number_has_its_settings() {
+        assert_eq!(SPACEGROUP_SETTINGS.len(), 530);
+        let numbers: BTreeSet<u8> = SPACEGROUP_SETTINGS.iter().map(|s| s.number).collect();
+        assert_eq!(numbers, (1..=230).collect());
+
+        for setting in SPACEGROUP_SETTINGS.iter() {
+            let operations: BTreeSet<_> = setting.operations.iter().map(key).collect();
+            assert_eq!(
+                operations.len(),
+                setting.operations.len(),
+                "{}",
+                setting.hall_symbol
+            );
+            for a in &setting.operations {
+                for b in &setting.operations {
+                    assert!(
+                        operations.contains(&key(&(a * b))),
+                        "{} is closed",
+                        setting.hall_symbol
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_number_and_its_tabulated_symbol_name_the_standard_setting() {
+        assert_eq!(SPACEGROUP_SYMMETRY_OPERATIONS.len(), 230);
+        for (number, operations) in SPACEGROUP_SYMMETRY_OPERATIONS.iter() {
+            let standard = SpaceGroupSetting::standard(*number).unwrap();
+            assert_eq!(operations, &standard.operations);
+
+            let symbol = &super::SPACEGROUP_SYMBOLS[number];
+            assert_eq!(SpaceGroupSetting::named(symbol), Some(standard), "{symbol}");
+        }
+
+        let choice = |number| SpaceGroupSetting::standard(number).map(|s| s.choice);
+        assert_eq!(choice(227), Some("2"));
+        assert_eq!(choice(14), Some("b1"));
+        assert_eq!(choice(166), Some("H"));
+        assert_eq!(choice(231), None);
+    }
+
+    #[test]
+    fn no_name_names_settings_of_two_groups() {
+        for (name, settings) in SETTINGS_BY_NAME.iter() {
+            assert!(
+                settings.iter().all(|s| s.number == settings[0].number),
+                "{name} names settings of several groups"
+            );
+        }
+    }
+
+    #[test]
+    fn a_symbol_names_its_setting() {
+        let hall = |symbol: &str| SpaceGroupSetting::named(symbol).map(|s| s.hall_symbol);
+
+        for (symbol, expected) in [
+            ("P 1 21/n 1", "-P 2yn"),
+            ("P 21/n", "-P 2yn"),
+            ("P 1 21/c 1", "-P 2ybc"),
+            ("P 2/m", "-P 2y"),
+            ("P 1 1 2/m", "-P 2"),
+            ("P b n m", "-P 2c 2ab"),
+            ("P 21 c n", "P -2n 2a"),
+            ("C m c a", "-C 2ac 2"),
+            ("C m c b", "-C 2ac 2"),
+            ("A b a 2", "A 2 -2ab"),
+            ("F m 3 m", "-F 4 2 3"),
+            ("F d -3 m", "-F 4vw 2vw 3"),
+            ("F d -3 m :1", "F 4d 2 3 -1d"),
+            ("F d -3 m:2", "-F 4vw 2vw 3"),
+            ("R -3 m", "-R 3 2\""),
+            ("R -3 m :R", "-P 3* 2"),
+        ] {
+            assert_eq!(hall(symbol), Some(expected), "{symbol}");
+        }
+        assert_eq!(hall("F d -3 m :3"), None);
+        assert_eq!(hall("X4bm"), None);
+    }
+
+    fn cell(symbol: &str, number: u8, angles: [f64; 3]) -> Cell {
+        Cell {
+            alpha: Measured::new(angles[0]),
+            beta: Measured::new(angles[1]),
+            gamma: Measured::new(angles[2]),
+            space_group: symbol.to_string(),
+            space_group_number: number,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn a_cell_without_operations_is_in_the_setting_its_symbol_names() {
+        let operations = SpaceGroupSymmetryOperations::of_cell(&cell("P 21/n", 14, [90.0; 3]));
+        let n_glide = parse_symmetry_operation("x+1/2,-y+1/2,z+1/2").unwrap();
+        assert!(operations.unwrap().iter().any(|o| key(o) == key(&n_glide)));
+
+        let choice = |symbol, number, angles| {
+            SpaceGroupSetting::of_cell(&cell(symbol, number, angles)).map(|s| s.choice)
+        };
+        assert_eq!(choice("R -3 m", 166, [90.0, 90.0, 120.0]), Some("H"));
+        assert_eq!(choice("R -3 m", 166, [57.3; 3]), Some("R"));
+        assert_eq!(choice("R -3 m", 0, [57.3; 3]), Some("R"));
+        assert_eq!(choice("P 21/n", 62, [90.0; 3]), None);
     }
 }
 
@@ -802,8 +1264,8 @@ mod test_spacegroup_symmetry_operations {
 
     #[test]
     fn a_cell_with_its_own_operations_generates_in_its_setting() {
-        // P4/nmm in origin choice 2: Al at (0, 0, 0) is on Wyckoff 4d there, but the standard
-        // setting (origin choice 1) puts that point on a 2-fold position.
+        // P4/nmm in origin choice 2: Al at (0, 0, 0) is on Wyckoff 4d there, but origin choice 1
+        // puts that point on a 2-fold position.
         let operations = [
             "y+1/2, x+1/2, -z",
             "-y, x+1/2, -z",
@@ -843,13 +1305,12 @@ mod test_spacegroup_symmetry_operations {
             .unwrap();
         assert_eq!(distinct(in_cell), 4);
 
-        let standard =
-            super::SpaceGroupSymmetryOperations::generate_symmetry_equivalent_points_from_point(
-                129,
-                cgmath::Point3::new(0.0, 0.0, 0.0),
-            )
-            .unwrap();
-        assert_ne!(distinct(standard), 4);
+        let origin_choice_1 = super::SpaceGroupSetting::named("P 4/n m m :1").unwrap();
+        let in_origin_choice_1 = super::equivalent_points(
+            &origin_choice_1.operations,
+            cgmath::Point3::new(0.0, 0.0, 0.0),
+        );
+        assert_ne!(distinct(in_origin_choice_1), 4);
     }
 
     #[test]

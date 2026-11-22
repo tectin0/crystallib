@@ -1040,10 +1040,10 @@ O1 O 0.2429 0 0.25 1
 
     #[test]
     fn the_silicon_of_a_silicate_is_a_cation() {
-        // Ideal β-cristobalite (Fd-3m, origin choice 1): Si on 8a, O on 16c, Si–O 1.60 Å. This
+        // Ideal β-cristobalite (Fd-3m, origin choice 2): Si on 8a, O on 16c, Si–O 1.60 Å. This
         // takes Brown's table (the feature bvparm2020): the element parameters alone put R0 of
         // Si–O at 1.70 Å instead of 1.62, the sums too high to fit.
-        let text = cubic(7.40, 227, "Si1 Si 0 0 0 1\nO1 O 0.125 0.125 0.125 1");
+        let text = cubic(7.40, 227, "Si1 Si 0.125 0.125 0.125 1\nO1 O 0 0 0 1");
 
         let expected = if cfg!(feature = "bvparm2020") {
             ["Si4+", "O2-"]
