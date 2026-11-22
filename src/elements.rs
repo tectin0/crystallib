@@ -10,11 +10,22 @@ pub fn letters(text: &str) -> String {
     text.chars().filter(|c| c.is_alphabetic()).collect()
 }
 
-/// The element a type symbol names (`Fe3+` is Fe), with deuterium and tritium as hydrogen.
+/// The element a type symbol names, written as elements are whatever case the type symbol uses
+/// (`Fe3+`, `FE3+` and `fe` are Fe), with deuterium and tritium as hydrogen.
 pub fn element_of(type_symbol: &str) -> String {
-    match letters(type_symbol).as_str() {
+    let letters = letters(type_symbol);
+    let mut chars = letters.chars();
+    let element: String = match chars.next() {
+        Some(first) => first
+            .to_uppercase()
+            .chain(chars.flat_map(char::to_lowercase))
+            .collect(),
+        None => String::new(),
+    };
+
+    match element.as_str() {
         "D" | "T" => "H".to_string(),
-        element => element.to_string(),
+        _ => element,
     }
 }
 
@@ -126,6 +137,15 @@ mod tests {
         assert_eq!(element_of("D1+"), "H");
         assert_eq!(element_of("T"), "H");
         assert_eq!(element_of("Fe3+"), "Fe");
+    }
+
+    #[test]
+    fn the_element_is_written_as_elements_are_whatever_case_the_symbol_uses() {
+        assert_eq!(element_of("MG"), "Mg");
+        assert_eq!(element_of("cl1-"), "Cl");
+        assert_eq!(element_of("h"), "H");
+        assert_eq!(element_of("d"), "H");
+        assert_eq!(element_of(""), "");
     }
 
     #[test]
