@@ -142,9 +142,9 @@ fn atoms_of(block: &DataBlock) -> Result<Atoms, String> {
         .iter()
         .map(|row| {
             let site_value = |tag: &str| column(sites, tag).and_then(|c| row.get(c));
-            let required = |tag: &str| {
+            let coordinate = |tag: &str| {
                 site_value(tag)
-                    .and_then(measured)
+                    .and_then(|value| measured(value).or_else(|| zero_as_icsd_writes_it(value)))
                     .ok_or_else(|| format!("an atom site has no number for {tag}"))
             };
 
@@ -188,9 +188,9 @@ fn atoms_of(block: &DataBlock) -> Result<Atoms, String> {
             };
 
             Ok(Atom {
-                x: required("_atom_site_fract_x")?,
-                y: required("_atom_site_fract_y")?,
-                z: required("_atom_site_fract_z")?,
+                x: coordinate("_atom_site_fract_x")?,
+                y: coordinate("_atom_site_fract_y")?,
+                z: coordinate("_atom_site_fract_z")?,
                 // The CIF dictionary's default: a site the file gives no occupancy is full.
                 occupancy: site_value("_atom_site_occupancy")
                     .and_then(measured)
@@ -269,6 +269,13 @@ fn with_oxidation_number(type_symbol: String, oxidation_numbers: &[(String, f64)
     }
 }
 
+/// 0 where `value` is `.` or `-.`: ICSD writes numbers without their leading zero (`.25`), so
+/// a coordinate of 0 as `.` and of −0 as `-.`. All 346 ICSD atom sites with such a coordinate
+/// have their stated multiplicity with it read as 0 (323 don't with 1/8).
+fn zero_as_icsd_writes_it(value: &Value) -> Option<Measured> {
+    matches!(value.text(), Some("." | "-.")).then(|| Measured::new(0.0))
+}
+
 fn measured(value: &Value) -> Option<Measured> {
     value.number().map(|(value, esd)| Measured { value, esd })
 }
@@ -315,6 +322,23 @@ _cell_volume 64
         try_phase_from_cif_bytes(text.as_bytes())
             .expect("the CIF describes a phase")
             .1
+    }
+
+    #[test]
+    fn a_coordinate_written_as_icsd_writes_zero_is_zero() {
+        let phase = phase(&format!(
+            "{SITES}_space_group_IT_number 176
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Ca1 . -. .25
+"
+        ));
+
+        let atom = &phase.atoms[0];
+        assert_eq!([atom.x.value, atom.y.value, atom.z.value], [0.0, 0.0, 0.25]);
     }
 
     #[test]

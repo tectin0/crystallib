@@ -84,9 +84,9 @@ dependencies = [
 
 [[package]]
 name = "cif"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3a2a73ecb6d238f4a188de196df2624d8e27419b5cfeac88b58a51f70b0ffd1"
+checksum = "4031ca2087c312fba6dc1643464ef304b8ad501b76644cb7cad8c6d5c7db244a"
 
 [[package]]
 name = "collection_literals"
@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "crystallib"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "cgmath",
  "cif",

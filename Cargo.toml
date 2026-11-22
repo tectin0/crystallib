@@ -1,6 +1,6 @@
 [package]
 name = "crystallib"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 description = "Crystal structures (cell, atoms, values with standard uncertainties), space group symmetry and element data (radii, electronegativities, oxidation states, bond valence parameters)"
 license = "GPL-3.0-only AND MIT AND CC-BY-4.0 AND BSD-3-Clause"
@@ -27,7 +27,7 @@ features = [
 
 [dependencies]
 cgmath = "0.18"
-cif = { version = "0.4", optional = true }
+cif = { version = "0.4.2", optional = true }
 miniz_oxide = { version = "0.8", optional = true }
 log = { version = "0.4", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
