@@ -6,7 +6,7 @@ Crystal structures and the crystallographic data to work with them:
   (`Phase`, `Cell`, `Atom`, `Measured`), and the oxidation state a type symbol names (`Fe3+`,
   `O2-`; `type_symbol`); atoms near one another, also across the cell's edges (`geometry`);
   the shape the atoms around a centre form, among the coordination polyhedra (`shapes`);
-- the symmetry operations and generators of the 230 space groups, symbols and numbers, their 530
+- the symmetry operations of the 230 space groups, symbols and numbers, their 530
   settings and the setting a Hermann–Mauguin symbol names (`SpaceGroupSetting`), and the
   positions a site takes in the unit cell, and the atoms of a phase's cell with how often their
   places are occupied (`cell_atoms`) (feature `symmetry`);
@@ -40,7 +40,7 @@ assert_eq!(IONIC_RADII.get("Na", 1, 6), Some(1.02));
 
 | Feature | What it adds |
 |---------|--------------|
-| `symmetry` | Space group symmetry operations, generators, symbols and numbers. |
+| `symmetry` | Space group symmetry operations, settings, symbols and numbers. |
 | `data` | Element data: radii, electronegativities, oxidation states, bond valence parameters. |
 | `cif` | Reading a phase out of a CIF (`cif_phase`), with the `cif` crate. |
 | `distance-distributions` | How long bonds and distances typically are (`distances`), from the Materials Project. |
@@ -57,7 +57,7 @@ an additional permission to combine it with code under the GSAS-II Open Source L
 derived from it (`LICENSE-ADDITIONAL-PERMISSION`). The data in `assets/` comes from the sources
 each file names in its header:
 
-- `spacegroup_generators.json`, `spacegroup_symbols.json`: generated from
+- `spacegroup_symbols.json`: generated from
   [pymatgen](https://github.com/materialsproject/pymatgen) by `assets/spacegroups.py`.
 - `spacegroup_settings.tsv`: the 530 space group settings and their symmetry operations, from
   [spglib](https://github.com/spglib/spglib) (BSD-3-Clause), written by

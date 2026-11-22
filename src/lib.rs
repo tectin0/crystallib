@@ -55,8 +55,8 @@ mod symmetry;
 #[cfg(feature = "symmetry")]
 pub use symmetry::{
     IntoSpaceGroupNumber, IntoSpaceGroupSymbol, LARGEST_SITE_MERGE, SAME_POSITION,
-    SPACEGROUP_NUMBERS, SPACEGROUP_SETTINGS, SPACEGROUP_SYMBOLS, SpaceGroupGenerators,
-    SpaceGroupSetting, SpaceGroupSymmetryOperations, independent_lattice_components_for_laue,
+    SPACEGROUP_NUMBERS, SPACEGROUP_SETTINGS, SPACEGROUP_SYMBOLS, SpaceGroupSetting,
+    SpaceGroupSymmetryOperations, independent_lattice_components_for_laue,
     independent_lattice_components_for_space_group_number, lattice_component_index,
     laue_and_unique_axis_from_sg_number, parse_symmetry_operation, with_face_copies,
 };
