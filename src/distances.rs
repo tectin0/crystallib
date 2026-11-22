@@ -517,8 +517,9 @@ mod tests {
 
     /// Writes the distance table to `$DISTANCES_OUT` from either the Materials Project's summary
     /// collection in `$MP_SUMMARY` (its CC BY materials matched to an experimental structure,
-    /// not deprecated) or the CIFs whose paths `$CIF_LIST` lists (fully occupied, at most 1000
-    /// atoms in the cell). For each structure, charges are guessed and bonds found by the default
+    /// not deprecated) or the CIFs whose paths `$CIF_LIST` lists (at most 1000 atoms in the
+    /// cell; of a structure with partly occupied sites, only its fully occupied sites count, see
+    /// `generator::structure`). For each structure, charges are guessed and bonds found by the default
     /// [`BondRule`](crate::bonding::BondRule); each key's distances in a structure weigh 1 together. A bond is recorded under its
     /// centre's species, coordination number and partner's species, and again under any
     /// coordination number and under the elements; every distance up to [`CUTOFF`] under its
@@ -753,16 +754,13 @@ mod tests {
         pub(super) type Key = (Kind, String, u8, String);
 
         /// One structure's distances per key, in bins of [`BOND_BIN`] from 0, or `None` where it isn't
-        /// counted (unreadable, partly occupied, too large).
+        /// counted (unreadable, too large, no distance between fully occupied sites). Only distances
+        /// between atoms of fully occupied sites count: a partly occupied one is missing from some
+        /// cells or shares its place. A bond counts under its centre's coordination number only
+        /// where none of the centre's bonds goes to a partly occupied site, as that number then
+        /// differs from cell to cell.
         pub(super) fn structure(cif: &[u8]) -> Option<HashMap<Key, Vec<u32>>> {
             let (_, phase) = crate::cif_phase::try_phase_from_cif_bytes(cif)?;
-            if phase
-                .atoms
-                .iter()
-                .any(|atom| (atom.occupancy.value - 1.0).abs() > 0.01)
-            {
-                return None;
-            }
             let phase = crate::oxidation::with_guessed_oxidation_states(&phase).into_owned();
             let atoms = crate::cell_atoms::cell_atoms(&phase);
             if atoms.is_empty() || atoms.len() > MAX_ATOMS {
@@ -772,6 +770,10 @@ mod tests {
             let disorder = crate::disorder::of_atoms(&phase, &atoms, &chemistry);
             let bond_atoms = crate::bonding::cell_bond_atoms(&phase, &atoms, &chemistry, &disorder);
             let fractional: Vec<_> = atoms.iter().map(|atom| atom.fractional).collect();
+            let full: Vec<bool> = atoms
+                .iter()
+                .map(|atom| (phase.atoms[atom.site].occupancy.value - 1.0).abs() <= 0.01)
+                .collect();
 
             let mut keys: HashMap<Key, Vec<u32>> = HashMap::default();
             let mut add = |key: Key, distance: f32| {
@@ -806,11 +808,16 @@ mod tests {
                     bonds[from].push((to, distance));
                 }
             }
-            for (centre, bonds) in bonds.iter().enumerate() {
+            for (centre, bonds) in bonds.iter().enumerate().filter(|(centre, _)| full[*centre]) {
                 let coordination = u8::try_from(bonds.len()).unwrap_or(u8::MAX);
-                for &(partner, length) in bonds {
+                let counts: &[u8] = if bonds.iter().all(|&(partner, _)| full[partner]) {
+                    &[coordination, ANY_COORDINATION]
+                } else {
+                    &[ANY_COORDINATION]
+                };
+                for &(partner, length) in bonds.iter().filter(|&&(partner, _)| full[partner]) {
                     for (a, b) in [(&species, &species), (&elements, &elements)] {
-                        for count in [coordination, ANY_COORDINATION] {
+                        for &count in counts {
                             let key = (Kind::Bond, a[centre].clone(), count, b[partner].clone());
                             add(key, length);
                         }
@@ -818,7 +825,10 @@ mod tests {
                 }
             }
 
-            for &(from, to, distance) in contacts.iter().filter(|contact| contact.2 < CUTOFF) {
+            let counted = |&&(from, to, distance): &&(usize, usize, f32)| {
+                distance < CUTOFF && full[from] && full[to]
+            };
+            for &(from, to, distance) in contacts.iter().filter(counted) {
                 for names in [&species, &elements] {
                     let (a, b) = (&names[from], &names[to]);
                     let (a, b) = if a <= b { (a, b) } else { (b, a) };
@@ -829,7 +839,7 @@ mod tests {
                 }
             }
 
-            Some(keys)
+            (!keys.is_empty()).then_some(keys)
         }
 
         /// Each key's summed weights and structures.
