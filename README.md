@@ -9,7 +9,8 @@ Crystal structures and the crystallographic data to work with them:
 - the symmetry operations of the 230 space groups, symbols and numbers, their 530
   settings and the setting a Hermann–Mauguin symbol names (`SpaceGroupSetting`), and the
   positions a site takes in the unit cell, and the atoms of a phase's cell with how often their
-  places are occupied (`cell_atoms`) (feature `symmetry`);
+  places are occupied and its asymmetric unit as the phase lists it (`cell_atoms`) (feature
+  `symmetry`);
 - element data: van der Waals, covalent, metallic and Shannon's ionic radii, Pauling and Allen
   electronegativities, oxidation states and bond valence parameters, and which partly occupied
   atoms can be present together (`occupancy`) (feature `data`);
