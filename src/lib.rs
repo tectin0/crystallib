@@ -26,6 +26,7 @@ pub mod distances;
 pub mod elements;
 pub mod geometry;
 mod measured;
+pub mod molecules;
 pub mod occupancy;
 #[cfg(all(feature = "data", feature = "symmetry"))]
 pub mod oxidation;

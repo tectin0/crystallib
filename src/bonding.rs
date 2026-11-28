@@ -21,7 +21,12 @@ use std::sync::Arc;
 use crate::{BOND_VALENCE, BondValence, COVALENT_RADII, ELECTRONEGATIVITIES, METALLIC_RADII};
 use std::collections::HashMap;
 
+use cgmath::Point3;
+
+use crate::Cell;
 use crate::elements::{anion_state, bonds_covalently, element_of, is_anion_former, is_metal};
+use crate::geometry::{copies_in_reach, pairs_within};
+use crate::molecules::PeriodicBond;
 use crate::type_symbol::Charge;
 
 /// Bond limits per element pair: the shortest and longest distance (Å) at which two atoms of
@@ -482,37 +487,21 @@ impl BondRule {
 
     /// The bonds `(i, j, distance)` between `atoms` at `positions`, `i < j`, ordered by `i`, then
     /// `j`: the pairs [`BondRule::are_bonded`] accepts, found without testing every pair (see
-    /// [`crate::geometry::pairs_within`]).
+    /// [`pairs_within`]).
     pub fn bonds(&self, positions: &[[f32; 3]], atoms: &[BondAtom]) -> Vec<(usize, usize, f32)> {
         debug_assert_eq!(positions.len(), atoms.len());
 
-        let mut elements = Vec::<String>::new();
-        let indices = atoms
-            .iter()
-            .map(|atom| {
-                let element = element_of(atom.type_symbol);
-                let index = elements.iter().position(|known| *known == element);
-                index.unwrap_or_else(|| {
-                    elements.push(element);
-                    elements.len() - 1
-                })
-            })
-            .collect::<Vec<_>>();
-
+        let ElementLimits {
+            elements,
+            indices,
+            limits,
+        } = self.element_limits(atoms);
         let charges = atoms
             .iter()
             .map(|atom| Charge::of(atom.type_symbol))
             .collect::<Vec<_>>();
 
-        let limits = elements
-            .iter()
-            .flat_map(|a| elements.iter().map(move |b| (a, b)))
-            .map(|(a, b)| self.limit(a, b))
-            .collect::<Vec<_>>();
-
-        let cutoff = limits.iter().map(|limit| limit.max).fold(0.0, f32::max);
-
-        crate::geometry::pairs_within(positions, cutoff)
+        pairs_within(positions, longest(&limits))
             .into_iter()
             .filter(|&(i, j, distance)| {
                 let (element_i, element_j) = (indices[i], indices[j]);
@@ -528,6 +517,73 @@ impl BondRule {
                     && limits[element_i * elements.len() + element_j].contains(distance)
             })
             .collect()
+    }
+
+    /// The bonds of the sites at `fractional` (coordinates in `[0, 1)` of `cell`), `atoms` as the
+    /// rule sees them, in the periodic structure: [`Self::bonds`] among the copies of the sites
+    /// a bond can reach (see [`copies_in_reach`]), each from a site to the copy of the other it
+    /// is bonded to, and listed from both of its ends. `None` for a cell without volume.
+    pub fn periodic_bonds(
+        &self,
+        cell: &Cell,
+        fractional: &[Point3<f64>],
+        atoms: &[BondAtom],
+    ) -> Option<Vec<PeriodicBond>> {
+        debug_assert_eq!(fractional.len(), atoms.len());
+
+        let cutoff = longest(&self.element_limits(atoms).limits);
+        let copies = copies_in_reach(cell, fractional, cutoff)?;
+        let copy_atoms: Vec<BondAtom> =
+            copies.copies.iter().map(|&(site, _)| atoms[site]).collect();
+
+        let mut bonds = Vec::new();
+        for (p, q, _) in self.bonds(&copies.positions, &copy_atoms) {
+            let ((site_p, shift_p), (site_q, shift_q)) = (copies.copies[p], copies.copies[q]);
+            if shift_p == [0; 3] {
+                bonds.push(PeriodicBond {
+                    from: site_p,
+                    to: site_q,
+                    shift: shift_q,
+                });
+            }
+            if shift_q == [0; 3] {
+                bonds.push(PeriodicBond {
+                    from: site_q,
+                    to: site_p,
+                    shift: shift_p,
+                });
+            }
+        }
+        Some(bonds)
+    }
+
+    /// The elements of `atoms`, each atom's index among them, and the limits of every pair of
+    /// them.
+    fn element_limits(&self, atoms: &[BondAtom]) -> ElementLimits {
+        let mut elements = Vec::<String>::new();
+        let indices = atoms
+            .iter()
+            .map(|atom| {
+                let element = element_of(atom.type_symbol);
+                let index = elements.iter().position(|known| *known == element);
+                index.unwrap_or_else(|| {
+                    elements.push(element);
+                    elements.len() - 1
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let limits = elements
+            .iter()
+            .flat_map(|a| elements.iter().map(move |b| (a, b)))
+            .map(|(a, b)| self.limit(a, b))
+            .collect::<Vec<_>>();
+
+        ElementLimits {
+            elements,
+            indices,
+            limits,
+        }
     }
 
     /// What keeps atoms `a` and `b`, of the elements `element_a` and `element_b` and with
@@ -558,6 +614,21 @@ impl BondRule {
         }
         None
     }
+}
+
+/// The limits of the element pairs among some atoms (see [`BondRule::element_limits`]).
+struct ElementLimits {
+    /// The elements, each once.
+    elements: Vec<String>,
+    /// Each atom's element, as its index in `elements`.
+    indices: Vec<usize>,
+    /// The limits of each pair of `elements`, by `first * elements.len() + second`.
+    limits: Vec<BondLimit>,
+}
+
+/// The longest distance (Å) any of `limits` bonds at, 0 for none.
+fn longest(limits: &[BondLimit]) -> f32 {
+    limits.iter().map(|limit| limit.max).fold(0.0, f32::max)
 }
 
 /// Whether atoms `a` and `b`, of the elements `elements` and `distance` (Å) apart, are
@@ -935,5 +1006,67 @@ mod tests {
                 "like charges of one element: {like_charges_of_one_element}"
             );
         }
+    }
+
+    /// A cell with the edges `a`, `b` and `c` (Å) and right angles.
+    fn orthorhombic(a: f64, b: f64, c: f64) -> Cell {
+        let mut cell = Cell::default();
+        (cell.a, cell.b, cell.c) = (a.into(), b.into(), c.into());
+        (cell.alpha, cell.beta, cell.gamma) = (90.0.into(), 90.0.into(), 90.0.into());
+        cell
+    }
+
+    #[test]
+    fn periodic_bonds_reach_the_copies_in_the_neighbouring_cells() {
+        // Two carbons 1.4 Å apart across the face at a = 0, 2.6 Å apart within the cell.
+        let cell = orthorhombic(4.0, 4.0, 4.0);
+        let fractional = [Point3::new(0.05, 0.5, 0.5), Point3::new(0.7, 0.5, 0.5)];
+        let atoms = [BondAtom::from("C"), BondAtom::from("C")];
+
+        let mut bonds = rule(0.0)
+            .periodic_bonds(&cell, &fractional, &atoms)
+            .unwrap();
+        bonds.sort_by_key(|bond| (bond.from, bond.to));
+
+        assert_eq!(
+            bonds,
+            [
+                PeriodicBond {
+                    from: 0,
+                    to: 1,
+                    shift: [-1, 0, 0]
+                },
+                PeriodicBond {
+                    from: 1,
+                    to: 0,
+                    shift: [1, 0, 0]
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn periodic_bonds_reach_as_far_as_the_longest_bond_in_a_small_cell() {
+        // Na+ and Cl− half a 1.2 Å cell apart along a: Cl− lies 0.6, 1.8 and 3.0 Å from Na+, and
+        // only 3.0 Å is within the table's Na–Cl limits (2.6–3.2 Å), two and a half cells away.
+        let cell = orthorhombic(1.2, 10.0, 10.0);
+        let fractional = [Point3::new(0.0, 0.5, 0.5), Point3::new(0.5, 0.5, 0.5)];
+        let atoms = [BondAtom::from("Na+"), BondAtom::from("Cl-")];
+
+        let mut bonds = rule(0.0)
+            .periodic_bonds(&cell, &fractional, &atoms)
+            .unwrap();
+        bonds.sort_by_key(|bond| (bond.from, bond.shift));
+
+        let bond = |from, to, shift| PeriodicBond { from, to, shift };
+        assert_eq!(
+            bonds,
+            [
+                bond(0, 1, [-3, 0, 0]),
+                bond(0, 1, [2, 0, 0]),
+                bond(1, 0, [-2, 0, 0]),
+                bond(1, 0, [3, 0, 0]),
+            ]
+        );
     }
 }

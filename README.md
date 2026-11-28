@@ -16,8 +16,10 @@ Crystal structures and the crystallographic data to work with them:
 - structure analysis: whether two atoms are bonded and why (`bonding`, per element pair
   `bond_pairs`), oxidation states guessed from bond valence sums (`oxidation`), the kind of bond
   two elements make (`bond_character`), which atoms of a disordered structure are present
-  together (`disorder`), and hydrogen bonds and short contacts (`contacts`) (features `data` and
-  `symmetry`).
+  together (`disorder`), hydrogen bonds and short contacts (`contacts`), and the bonds of a
+  periodic structure (`BondRule::periodic_bonds`) (features `data` and `symmetry`);
+- the molecules, chains, layers and frameworks a periodic structure's bonds join its sites into
+  (`molecules`).
 
 ```rust
 use crystallib::{Cell, SpaceGroupSymmetryOperations, IONIC_RADII};

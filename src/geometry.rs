@@ -65,6 +65,43 @@ pub fn periodic_contacts(
     fractional: &[Point3<f64>],
     cutoff: f32,
 ) -> Option<Vec<(usize, usize, f32)>> {
+    let copies = copies_in_reach(cell, fractional, cutoff)?;
+
+    let mut contacts = Vec::new();
+    for (p, q, distance) in pairs_within(&copies.positions, cutoff) {
+        if distance >= cutoff {
+            continue;
+        }
+        let ((site_p, shift_p), (site_q, shift_q)) = (copies.copies[p], copies.copies[q]);
+        if shift_p == [0; 3] {
+            contacts.push((site_p, site_q, distance));
+        }
+        if shift_q == [0; 3] {
+            contacts.push((site_q, site_p, distance));
+        }
+    }
+    Some(contacts)
+}
+
+/// The copies of a cell's sites whose fractional coordinates lie within `cutoff` (Å) of the cell
+/// (see [`copies_in_reach`]): every atom the sites can be closer than `cutoff` to.
+pub struct CopiesInReach {
+    /// Their positions (Cartesian, Å).
+    pub positions: Vec<[f32; 3]>,
+    /// The site each is a copy of, and the lattice translation (in cells along a, b and c) from
+    /// the site to it.
+    pub copies: Vec<(usize, [i32; 3])>,
+}
+
+/// The copies of the sites at `fractional` (coordinates in `[0, 1)` of `cell`) by lattice
+/// translations whose fractional coordinates lie within `cutoff` (Å) of the cell, the sites
+/// themselves among them: the atoms of the periodic structure a site can be closer than `cutoff`
+/// to. `None` for a cell without volume.
+pub fn copies_in_reach(
+    cell: &Cell,
+    fractional: &[Point3<f64>],
+    cutoff: f32,
+) -> Option<CopiesInReach> {
     let axis = |fractional: [f64; 3]| cell.cartesian(Vector3::from(fractional)).cast::<f64>();
     let lattice = Matrix3::from_cols(
         axis([1.0, 0.0, 0.0])?,
@@ -80,8 +117,6 @@ pub fn periodic_contacts(
         -reach..=reach
     };
 
-    // Each site's copies whose fractional coordinates lie within the reach of the cell, with
-    // the site and whether the copy is the site itself.
     let mut positions = Vec::new();
     let mut copies = Vec::new();
     for (site, point) in fractional.iter().enumerate() {
@@ -95,27 +130,13 @@ pub fn periodic_contacts(
                     if near {
                         let position = lattice * copy;
                         positions.push([position.x as f32, position.y as f32, position.z as f32]);
-                        copies.push((site, (a, b, c) == (0, 0, 0)));
+                        copies.push((site, [a, b, c]));
                     }
                 }
             }
         }
     }
-
-    let mut contacts = Vec::new();
-    for (p, q, distance) in pairs_within(&positions, cutoff) {
-        if distance >= cutoff {
-            continue;
-        }
-        let ((site_p, home_p), (site_q, home_q)) = (copies[p], copies[q]);
-        if home_p {
-            contacts.push((site_p, site_q, distance));
-        }
-        if home_q {
-            contacts.push((site_q, site_p, distance));
-        }
-    }
-    Some(contacts)
+    Some(CopiesInReach { positions, copies })
 }
 
 /// `count` positions spread over a cube of edge `extent` around the origin, the same for every
